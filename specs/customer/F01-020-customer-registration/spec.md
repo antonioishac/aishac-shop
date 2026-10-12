@@ -5,7 +5,7 @@
 | Item do backlog | F01-020 (spec do marco 01.2; implementada por F01-021 a F01-026) |
 | Contexto / serviço | customer-service |
 | Fase | 01-base-sincrona |
-| Status | Rascunho |
+| Status | Aprovada em 2026-10-12 (Portão 1) |
 
 ## 1. Objetivo
 Manter o cadastro de clientes do Aishac Shop: dados pessoais, situação (ativo, bloqueado ou desativado) e endereços de entrega. O cadastro atende o checkout da loja, que identifica o cliente por e-mail ou CPF sem login (F01-064), o painel `/admin` e o sales-service, que precisa saber se o cliente pode comprar e para onde entregar (F01-024).
@@ -193,7 +193,157 @@ Contrato completo: [contract.yaml](contract.yaml)
 Todos em ProblemDetail com `code`, `correlationId` e `timestamp` (ADR-008).
 
 ## 6. Modelo de dados
-> *Pendente — preenchido pela skill `modelar-dados` e aprovado no Portão 2.*
+
+> **Status:** proposto, aguardando o Portão 2. Banco `customers_db` (PostgreSQL 18), dono `customer_app`. Migrations: F01-021.
+
+### Visão geral
+
+```text
+customers 1──N customer_addresses   (FK; endereços fazem parte do agregado Customer)
+customers ┄┄ sales_db.orders.customer_id   (lógico, outro serviço, sem FK — ADR-007)
+```
+
+`Customer` é o agregado raiz; `customer_addresses` só muda através dele. Por isso **só `customers` tem `version`**, e qualquer mudança de endereço incrementa a versão do cliente (ver Concorrência).
+
+### Tabela `customers`
+
+| Coluna | Tipo | Nulo | Default | Regra/constraint | Origem |
+|---|---|---|---|---|---|
+| `id` | `UUID` | não | `uuidv7()` | `pk_customers`; gerado pela aplicação (UUID v7), default só para inserts manuais | ADR-007 |
+| `full_name` | `VARCHAR(150)` | não | — | `ck_customers_full_name_length`: 3 a 150 caracteres sem espaços nas pontas | RN-01, CA-05 |
+| `cpf` | `CHAR(11)` | não | — | `ck_customers_cpf_format` (11 dígitos); `uk_customers_cpf` | RN-02, RN-03, CA-03 |
+| `email` | `VARCHAR(254)` | não | — | `ck_customers_email_normalized` (minúsculas, sem espaços nas pontas); `uk_customers_email` | RN-04, CA-04 |
+| `phone` | `VARCHAR(11)` | sim | — | `ck_customers_phone_format` (10 ou 11 dígitos) | Decisão 4 |
+| `status` | `VARCHAR(20)` | não | `'ACTIVE'` | `ck_customers_status` (`ACTIVE`, `BLOCKED`, `INACTIVE`) | RN-05, RN-06 |
+| `block_reason` | `VARCHAR(255)` | sim | — | Preenchido se e somente se `BLOCKED` (`ck_customers_block_data`) | RN-06, Decisão 6 |
+| `blocked_at` | `TIMESTAMPTZ` | sim | — | Idem | CA-11 |
+| `deactivated_at` | `TIMESTAMPTZ` | sim | — | Preenchido se e somente se `INACTIVE` (`ck_customers_deactivation_data`) | CA-12 |
+| `version` | `BIGINT` | não | `0` | Lock otimista do agregado (`@Version`) | RN-09, CA-10 |
+| `created_at` | `TIMESTAMPTZ` | não | — | Vindo do `Clock` da aplicação | — |
+| `updated_at` | `TIMESTAMPTZ` | não | — | Idem | — |
+
+> Ao desativar um cliente bloqueado, `block_reason` e `blocked_at` são limpos: o histórico de bloqueio não é requisito da fase 01 (auditoria está fora de escopo).
+
+### Tabela `customer_addresses`
+
+| Coluna | Tipo | Nulo | Default | Regra/constraint | Origem |
+|---|---|---|---|---|---|
+| `id` | `UUID` | não | `uuidv7()` | `pk_customer_addresses` | — |
+| `customer_id` | `UUID` | não | — | `fk_customer_addresses_customer` → `customers(id)`, `ON DELETE RESTRICT` | RN-11 |
+| `label` | `VARCHAR(40)` | não | — | Não vazio (`ck_customer_addresses_label_not_blank`) | RN-11 |
+| `zip_code` | `CHAR(8)` | não | — | `ck_customer_addresses_zip_code_format` (8 dígitos) | RN-11, CA-19 |
+| `street` | `VARCHAR(150)` | não | — | — | RN-11 |
+| `number` | `VARCHAR(10)` | não | — | Texto: aceita `S/N` | RN-11 |
+| `complement` | `VARCHAR(60)` | sim | — | — | RN-11 |
+| `district` | `VARCHAR(80)` | não | — | — | RN-11 |
+| `city` | `VARCHAR(80)` | não | — | — | RN-11 |
+| `state` | `CHAR(2)` | não | — | `ck_customer_addresses_state` (27 UFs) | RN-11, CA-19 |
+| `country` | `CHAR(2)` | não | `'BR'` | `ck_customer_addresses_country` (`= 'BR'`) | RN-11 |
+| `is_default` | `BOOLEAN` | não | `false` | No máximo um `true` por cliente (`uk_customer_addresses_single_default`) | RN-13, RN-14, CA-16 |
+| `created_at` | `TIMESTAMPTZ` | não | — | Define o "mais recente" da RN-15 | RN-15, CA-17 |
+| `updated_at` | `TIMESTAMPTZ` | não | — | — | — |
+
+### Constraints
+
+| Nome | Tipo | Regra |
+|---|---|---|
+| `pk_customers`, `pk_customer_addresses` | PK | — |
+| `uk_customers_cpf` | UNIQUE | CPF único em qualquer status (RN-03) |
+| `uk_customers_email` | UNIQUE | E-mail único em qualquer status; combinado com `ck_customers_email_normalized`, a unicidade ignora maiúsculas (RN-04) |
+| `uk_customer_addresses_single_default` | EXCLUDE (btree, `=`) `WHERE (is_default)`, **`DEFERRABLE INITIALLY DEFERRED`** | Um padrão por cliente, verificado no `COMMIT`. Assim, desmarcar A e marcar B na mesma transação funciona em qualquer ordem de gravação (RN-14). Um índice único parcial seria verificado linha a linha e poderia falhar conforme a ordem do *flush* do Hibernate |
+| `fk_customer_addresses_customer` | FK | `ON DELETE RESTRICT`: cliente nunca é excluído (RN-07) |
+| `ck_customers_*`, `ck_customer_addresses_*` | CHECK | Formatos, domínio de status e UF, e consistência entre status e datas, como nas tabelas acima |
+
+### Índices e consultas atendidas
+
+| Índice | Consulta que atende |
+|---|---|
+| `uk_customers_cpf` (implícito da UNIQUE) | `GET /customers?cpf=` (checkout, CA-08) e verificação de duplicidade |
+| `uk_customers_email` (implícito da UNIQUE) | `GET /customers?email=` (checkout, CA-08) e verificação de duplicidade |
+| `idx_customers_created_at` (`created_at DESC`) | Listagem sem filtro, ordenação padrão `createdAt,desc` com paginação (CA-07) |
+| `idx_customers_status_created_at` (`status, created_at DESC`) | `GET /customers?status=` com a ordenação padrão (CA-07) |
+| `idx_customers_full_name_trgm` (GIN, `lower(full_name) gin_trgm_ops`) | `GET /customers?name=` "contém, sem diferenciar maiúsculas": `lower(full_name) LIKE '%' \|\| lower(:name) \|\| '%'` (CA-07). Requer a extensão `pg_trgm` (confiável, criada pelo dono do banco) |
+| `idx_customer_addresses_customer_created` (`customer_id, created_at DESC`) | Índice da FK; listar endereços do cliente; achar o "mais recente" na RN-15; contar endereços (RN-12) |
+
+Sem índice para `sort=fullName`: a ordenação por nome com filtro já reduz o conjunto, e o volume da fase 01 não justifica. Busca ignorando acentos (`unaccent`) fica fora de escopo.
+
+### Concorrência
+
+- **Dados do cliente e status:** `UPDATE ... WHERE id = :id AND version = :version`, via `@Version`. Zero linhas afetadas vira `CONCURRENT_MODIFICATION` (CA-10).
+- **Endereços:** toda operação de endereço (incluir, alterar, remover, trocar padrão) **incrementa a `version` do cliente** (lock otimista forçado na raiz). Duas inclusões simultâneas no 10º endereço não ultrapassam o limite: uma delas perde a disputa de versão (RN-12). O limite é garantido pelo agregado, não por CHECK.
+- **CPF e e-mail duplicados em cadastros simultâneos:** a verificação prévia é só para mensagem amigável. A garantia é a UNIQUE, e a violação de `uk_customers_cpf` ou `uk_customers_email` é traduzida para `CPF_ALREADY_EXISTS` ou `EMAIL_ALREADY_EXISTS`.
+- **Endereço padrão:** a *exclusion constraint* adiável impede dois padrões mesmo com transações concorrentes.
+
+### DDL proposto (não é a migration)
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE TABLE customers (
+    id             UUID         NOT NULL DEFAULT uuidv7(),
+    full_name      VARCHAR(150) NOT NULL,
+    cpf            CHAR(11)     NOT NULL,
+    email          VARCHAR(254) NOT NULL,
+    phone          VARCHAR(11),
+    status         VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
+    block_reason   VARCHAR(255),
+    blocked_at     TIMESTAMPTZ,
+    deactivated_at TIMESTAMPTZ,
+    version        BIGINT       NOT NULL DEFAULT 0,
+    created_at     TIMESTAMPTZ  NOT NULL,
+    updated_at     TIMESTAMPTZ  NOT NULL,
+    CONSTRAINT pk_customers PRIMARY KEY (id),
+    CONSTRAINT uk_customers_cpf UNIQUE (cpf),
+    CONSTRAINT uk_customers_email UNIQUE (email),
+    CONSTRAINT ck_customers_full_name_length
+        CHECK (full_name = btrim(full_name) AND char_length(full_name) BETWEEN 3 AND 150),
+    CONSTRAINT ck_customers_cpf_format CHECK (cpf ~ '^[0-9]{11}$'),
+    CONSTRAINT ck_customers_email_normalized CHECK (email = lower(btrim(email))),
+    CONSTRAINT ck_customers_phone_format CHECK (phone ~ '^[0-9]{10,11}$'),
+    CONSTRAINT ck_customers_status CHECK (status IN ('ACTIVE', 'BLOCKED', 'INACTIVE')),
+    CONSTRAINT ck_customers_block_data CHECK (
+        (status = 'BLOCKED') = (block_reason IS NOT NULL AND blocked_at IS NOT NULL)
+        AND (block_reason IS NULL) = (blocked_at IS NULL)),
+    CONSTRAINT ck_customers_deactivation_data CHECK ((status = 'INACTIVE') = (deactivated_at IS NOT NULL))
+);
+
+CREATE INDEX idx_customers_created_at ON customers (created_at DESC);
+CREATE INDEX idx_customers_status_created_at ON customers (status, created_at DESC);
+CREATE INDEX idx_customers_full_name_trgm ON customers USING gin (lower(full_name) gin_trgm_ops);
+
+CREATE TABLE customer_addresses (
+    id          UUID         NOT NULL DEFAULT uuidv7(),
+    customer_id UUID         NOT NULL,
+    label       VARCHAR(40)  NOT NULL,
+    zip_code    CHAR(8)      NOT NULL,
+    street      VARCHAR(150) NOT NULL,
+    number      VARCHAR(10)  NOT NULL,
+    complement  VARCHAR(60),
+    district    VARCHAR(80)  NOT NULL,
+    city        VARCHAR(80)  NOT NULL,
+    state       CHAR(2)      NOT NULL,
+    country     CHAR(2)      NOT NULL DEFAULT 'BR',
+    is_default  BOOLEAN      NOT NULL DEFAULT false,
+    created_at  TIMESTAMPTZ  NOT NULL,
+    updated_at  TIMESTAMPTZ  NOT NULL,
+    CONSTRAINT pk_customer_addresses PRIMARY KEY (id),
+    CONSTRAINT fk_customer_addresses_customer
+        FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE RESTRICT,
+    CONSTRAINT uk_customer_addresses_single_default
+        EXCLUDE USING btree (customer_id WITH =) WHERE (is_default)
+        DEFERRABLE INITIALLY DEFERRED,
+    CONSTRAINT ck_customer_addresses_label_not_blank CHECK (btrim(label) <> ''),
+    CONSTRAINT ck_customer_addresses_zip_code_format CHECK (zip_code ~ '^[0-9]{8}$'),
+    CONSTRAINT ck_customer_addresses_state CHECK (state IN (
+        'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA',
+        'PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO')),
+    CONSTRAINT ck_customer_addresses_country CHECK (country = 'BR')
+);
+
+CREATE INDEX idx_customer_addresses_customer_created ON customer_addresses (customer_id, created_at DESC);
+```
+
+Separação prevista nas migrations (F01-021): `V1__create_customers.sql` (extensão, tabela e índices) e `V2__create_customer_addresses.sql`.
 
 ## 7. Dependências externas
 - **Nenhuma chamada a outros serviços.** O customer-service é consumido pelo sales-service (`order-data`, com teste de contrato produtor no F01-025) e pelo web-bff.
@@ -207,10 +357,14 @@ Todos em ProblemDetail com `code`, `correlationId` e `timestamp` (ADR-008).
 - Endereço fora do Brasil.
 - Histórico de alterações cadastrais (auditoria).
 
-## 9. Perguntas em aberto
-1. **Reativação:** `INACTIVE` deve ser mesmo final na fase 01, ou um admin pode reativar (`INACTIVE → ACTIVE`)?
-2. **E-mail de desativado:** um cliente desativado "prende" o e-mail para sempre (RN-04)? A alternativa é liberar o e-mail na desativação, mas aí uma mesma pessoa poderia ter dois cadastros.
-3. **Endereço padrão removido (RN-15):** promover o mais recente está bom, ou prefere deixar sem padrão até o cliente escolher?
-4. **Telefone:** opcional, só celular ou fixo brasileiro (10 ou 11 dígitos, com DDD). Precisa de outro formato?
-5. **Data de nascimento:** faz falta para algo da fase 01? Proponho não incluir (minimização de dados, LGPD).
-6. **Motivo do bloqueio:** obrigatório (proposto, até 255 caracteres) e visível só no `/admin`?
+## 9. Decisões do Portão 1 (2026-10-12)
+As perguntas em aberto foram respondidas com as propostas da spec:
+
+| # | Pergunta | Decisão |
+|---|---|---|
+| 1 | Reativação de `INACTIVE` | Não existe na fase 01: `INACTIVE` é final (RN-07) |
+| 2 | E-mail de cliente desativado | Continua reservado; um e-mail nunca identifica dois cadastros (RN-04) |
+| 3 | Remoção do endereço padrão | O cadastrado mais recentemente vira padrão (RN-15) |
+| 4 | Telefone | Opcional, brasileiro, com DDD, 10 ou 11 dígitos |
+| 5 | Data de nascimento | Não incluída (minimização de dados, LGPD) |
+| 6 | Motivo do bloqueio | Obrigatório, 3 a 255 caracteres, exibido no `/admin` |
