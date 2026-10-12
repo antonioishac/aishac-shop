@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Aceita |
+| Status | Substituída por ADR-025 |
 | Data | 2026-10-12 |
 | Fase | 01-base-sincrona |
 | Origem | D04 · rule `architecture-boundaries` · F01-013 |

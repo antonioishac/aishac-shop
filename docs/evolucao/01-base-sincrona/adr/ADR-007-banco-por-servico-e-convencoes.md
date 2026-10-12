@@ -11,7 +11,7 @@
 Banco compartilhado entre serviços cria acoplamento invisível: um serviço quebra o outro ao mudar uma tabela. Localmente, no entanto, subir um PostgreSQL por serviço pesa na máquina de desenvolvimento.
 
 ## Decisão
-**Um banco lógico por serviço** (`customers_db`, `sales_db`), sem FK, view ou consulta entre bancos. Localmente roda **um único container PostgreSQL 18** com os dois bancos e **um usuário por serviço** (`customer_app`, `sales_app`), sem acesso cruzado: `CONNECT` revogado de `PUBLIC`. A estrutura muda **somente por migration Flyway**.
+**Um banco lógico por serviço** (`aishac_customer`, `aishac_sales`), sem FK, view ou consulta entre bancos. Localmente roda **um único container PostgreSQL 18** com os dois bancos e **um usuário por serviço** (`customer_app`, `sales_app`), sem acesso cruzado: `CONNECT` revogado de `PUBLIC`. A estrutura muda **somente por migration Flyway**.
 
 Convenções de modelagem:
 - chave primária UUID v7;

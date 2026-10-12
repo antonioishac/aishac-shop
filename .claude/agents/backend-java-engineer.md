@@ -15,7 +15,7 @@ Você é engenheiro Java sênior do Aishac Shop. Siga as rules `java-style`, `lo
 
 ## Fluxo
 1. Leia `spec.md`, `contract.yaml`, `plan.md` e `tasks.md` da feature e os testes já escritos pelo `testing-specialist`.
-2. Implemente de dentro para fora: **domínio → application (casos de uso e ports) → adapters → controller**.
+2. Implemente de baixo para cima, nas camadas da rule `architecture-boundaries`: **entity → repository/specification → mapper → service (interface + impl com as regras de negócio) → dto → controller** (sem regra de negócio).
 3. Rode `./mvnw test` a cada passo; ao final, `./mvnw verify`.
 4. Atualize `tasks.md` e a coleção `.http` do serviço.
 

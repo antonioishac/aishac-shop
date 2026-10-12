@@ -23,16 +23,16 @@ ALTER ROLE claude_mcp SET log_statement = 'all';
 ALTER ROLE claude_mcp SET statement_timeout = '30s';
 
 -- Bancos: o usuário do serviço é o dono (executa o Flyway; separação DDL/DML é o item F01-090).
-CREATE DATABASE customers_db OWNER customer_app;
-CREATE DATABASE sales_db     OWNER sales_app;
+CREATE DATABASE aishac_customer OWNER customer_app;
+CREATE DATABASE aishac_sales     OWNER sales_app;
 
 -- Sem acesso público: cada usuário só conecta no que lhe foi concedido.
-REVOKE ALL ON DATABASE customers_db FROM PUBLIC;
-REVOKE ALL ON DATABASE sales_db     FROM PUBLIC;
+REVOKE ALL ON DATABASE aishac_customer FROM PUBLIC;
+REVOKE ALL ON DATABASE aishac_sales     FROM PUBLIC;
 REVOKE ALL ON DATABASE postgres     FROM PUBLIC;
 
-GRANT CONNECT ON DATABASE customers_db TO claude_mcp;
-GRANT CONNECT ON DATABASE sales_db     TO claude_mcp;
+GRANT CONNECT ON DATABASE aishac_customer TO claude_mcp;
+GRANT CONNECT ON DATABASE aishac_sales     TO claude_mcp;
 EOSQL
 
 # claude_mcp: lê e altera dados das tabelas criadas pelo dono do banco, sem permissão de DDL.
@@ -48,5 +48,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE $owner IN SCHEMA public
 EOSQL
 }
 
-grant_mcp customers_db customer_app
-grant_mcp sales_db sales_app
+grant_mcp aishac_customer customer_app
+grant_mcp aishac_sales sales_app

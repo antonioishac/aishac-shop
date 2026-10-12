@@ -8,11 +8,11 @@ paths:
 # Testes
 
 ## Geral
-- Pirâmide definida no `CLAUDE.md` raiz. Domínio é testado **sem Spring**.
+- Pirâmide definida no `CLAUDE.md` raiz. Regras de negócio (services) são testadas **sem Spring**, com o repository mockado e o mapper real (`Mappers.getMapper`).
 - Nome do método descreve o comportamento: `shouldRejectOrderWhenStockIsInsufficient`.
 - Estrutura Given / When / Then visível (comentários ou blocos).
-- **AssertJ** para asserções (nada de `assertEquals` do JUnit). Mockito só para ports; nunca mocke o que você não possui (ex.: `RestClient`, repositórios Spring Data em teste de integração).
-- *Test data builders* (`aCustomer().withStatus(BLOCKED).build()`) em vez de construir objetos à mão em cada teste.
+- **AssertJ** para asserções (nada de `assertEquals` do JUnit). Nos unitários de service, mocke o repository (Mockito); nunca mocke o que você não possui em teste de integração (ex.: `RestClient`, repositórios Spring Data).
+- Use os builders das entidades (`Customer.builder()...build()`) ou fixtures de teste, em vez de montar objetos campo a campo em cada teste.
 - `Clock` fixo nos testes que dependem de tempo.
 
 ## Integração (`*IT`)

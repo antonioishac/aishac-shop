@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Aceita |
+| Status | Aceita (organização dos módulos em pacotes revista pelo ADR-025; definição na spec F01-030) |
 | Data | 2026-10-12 |
 | Fase | 01-base-sincrona |
 | Origem | D05 · IF-010 |

@@ -12,8 +12,8 @@
 9. Máquina de estados — Pedido
 10. Deployment — Local (Docker Compose)
 11. Deployment — Kubernetes (alvo)
-12. ER — customers_db
-13. ER — sales_db
+12. ER — aishac_customer
+13. ER — aishac_sales
 
 ## Cores (preenchimento)
 | Elemento | Cor |

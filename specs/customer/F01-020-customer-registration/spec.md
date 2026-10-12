@@ -194,13 +194,13 @@ Todos em ProblemDetail com `code`, `correlationId` e `timestamp` (ADR-008).
 
 ## 6. Modelo de dados
 
-> **Status:** aprovado em 2026-10-12 (Portão 2). Banco `customers_db` (PostgreSQL 18), dono `customer_app`. Migrations: F01-021.
+> **Status:** aprovado em 2026-10-12 (Portão 2). Banco `aishac_customer` (PostgreSQL 18), dono `customer_app`. Migrations: F01-021.
 
 ### Visão geral
 
 ```text
 customers 1──N customer_addresses   (FK; endereços fazem parte do agregado Customer)
-customers ┄┄ sales_db.orders.customer_id   (lógico, outro serviço, sem FK — ADR-007)
+customers ┄┄ aishac_sales.orders.customer_id   (lógico, outro serviço, sem FK — ADR-007)
 ```
 
 `Customer` é o agregado raiz; `customer_addresses` só muda através dele. Por isso **só `customers` tem `version`**, e qualquer mudança de endereço incrementa a versão do cliente (ver Concorrência).
@@ -347,7 +347,7 @@ Separação prevista nas migrations (F01-021): `V1__create_customers.sql` (exten
 
 ## 7. Dependências externas
 - **Nenhuma chamada a outros serviços.** O customer-service é consumido pelo sales-service (`order-data`, com teste de contrato produtor no F01-025) e pelo web-bff.
-- Banco `customers_db` (obrigatório): sem banco, o serviço fica *not ready* e responde `503`.
+- Banco `aishac_customer` (obrigatório): sem banco, o serviço fica *not ready* e responde `503`.
 - Nenhuma configuração nova por ambiente.
 
 ## 8. Fora de escopo

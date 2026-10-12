@@ -1,14 +1,15 @@
 ---
 paths:
   - "services/**/db/migration/**"
-  - "services/**/adapter/out/persistence/**"
+  - "services/**/entity/**"
+  - "services/**/repository/**"
   - "infra/docker/postgres/**"
 ---
 
 # Banco de dados (PostgreSQL)
 
 ## Isolamento
-- Um banco por serviço: `customers_db` (usuário `customer_app`), `sales_db` (usuário `sales_app`).
+- Um banco por serviço: `aishac_customer` (usuário `customer_app`), `aishac_sales` (usuário `sales_app`).
 - **Nenhuma FK, view ou consulta entre bancos.** Referência a outro serviço é só um UUID, sem FK física.
 - Dentro do `sales-service`, referências entre módulos (`order` → `catalog`) também são lógicas, sem FK, para permitir a extração futura do catálogo.
 
@@ -35,6 +36,6 @@ paths:
 - Concorrência de estoque: `UPDATE ... SET stock_quantity = stock_quantity - :qty WHERE id = :id AND stock_quantity >= :qty`; verificar linhas afetadas. Múltiplos produtos: processar em **ordem crescente de ID**.
 
 ## JPA
-- Entidades em `adapter/out/persistence`, separadas do domínio; conversão via MapStruct.
+- Entidades em `entity/`, estendendo `BaseEntity` (UUID v7 via `@UuidGenerator(style = VERSION_7)`, `created_at`/`updated_at` por auditoria do Spring Data). Conversão para DTO via MapStruct (`mapper/`).
 - `FetchType.LAZY` em todas as associações; consultas de listagem com projeções ou `JOIN FETCH` explícito. Proibido N+1.
 - `spring.jpa.open-in-view=false`; `ddl-auto=validate`.

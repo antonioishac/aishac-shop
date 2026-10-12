@@ -77,10 +77,10 @@ Decisões tomadas na concepção do projeto. Cada uma vira um ADR formal no marc
 | D01 | **Monorepo** com build independente por serviço (Maven + Wrapper em cada um). Escala e deploy individuais por serviço. Sem biblioteca compartilhada de domínio. |
 | D02 | **Java 25**, **Spring Boot 4.1.x**, **Spring Cloud 2025.1.x (Oakwood)**. Versões de patch confirmadas na criação. |
 | D03 | **Lombok mantido**, com `lombok-mapstruct-binding` e regras de uso (`@RequiredArgsConstructor`, `@Slf4j`, `@Getter`; proibido `@Data`/`@EqualsAndHashCode` em entidade JPA; Records para DTOs). |
-| D04 | **Arquitetura hexagonal leve, organizada por feature.** Modelo de domínio separado da entidade JPA. |
+| D04 | ~~Arquitetura hexagonal leve, organizada por feature.~~ **Revista:** camadas por tipo (controller, service, repository...), ADR-025. |
 | D05 | **Dois microserviços:** `customer-service` e `sales-service`. **Catálogo** é um módulo do `sales-service` com fronteira de pacote rígida. |
 | D06 | **Fase 01 100% síncrona.** Sem broker, sem Outbox, sem eventos internos do Spring. Diagrama também síncrono. |
-| D07 | **Um banco por serviço** (`customers_db`, `sales_db`). Localmente, um único container PostgreSQL com os dois bancos e **um usuário por serviço** sem acesso cruzado. |
+| D07 | **Um banco por serviço** (`aishac_customer`, `aishac_sales`). Localmente, um único container PostgreSQL com os dois bancos e **um usuário por serviço** sem acesso cruzado. |
 | D08 | Convenções de banco: UUID v7, `NUMERIC(19,2)` para dinheiro, `TIMESTAMPTZ`, status em `VARCHAR + CHECK`, `version` para lock otimista, constraints nomeadas. |
 | D09 | Erros em **`ProblemDetail` (RFC 9457)** com catálogo de códigos de erro. |
 | D10 | **Resilience4j** nas chamadas Vendas → Clientes e no S3 (ADR comparando com o retry nativo do Spring 7). |

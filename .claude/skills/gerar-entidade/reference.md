@@ -1,59 +1,81 @@
-# Estrutura de referência (exemplo: `Order` em `sales-service/order`)
+# Estrutura de referência: `customer-service`
+
+Implementação completa da spec F01-020, no padrão em camadas por tipo (ADR-025). Copie a forma, não o conteúdo.
 
 ```text
-com.aishac.sales.order/
-├── domain/
-│   ├── Order.java                 # agregado raiz: create(), addItem(), pay(), cancel()
-│   ├── OrderItem.java
-│   ├── OrderStatus.java           # sealed interface + estados (padrão State)
-│   ├── Money.java                 # record com BigDecimal
-│   └── OrderNotFoundException.java
-├── application/
-│   ├── port/in/
-│   │   ├── CreateOrderUseCase.java
-│   │   └── CreateOrderCommand.java   # record
-│   ├── port/out/
-│   │   ├── LoadOrderPort.java
-│   │   ├── SaveOrderPort.java
-│   │   ├── CustomerPort.java          # implementado pelo adapter REST
-│   │   └── ProductCatalogPort.java    # implementado pelo adapter que usa o módulo catalog
-│   └── service/
-│       └── CreateOrderService.java    # @Service @Transactional @RequiredArgsConstructor
-└── adapter/
-    ├── in/web/
-    │   ├── OrderController.java
-    │   ├── OrderWebMapper.java
-    │   └── dto/{CreateOrderRequest,OrderResponse}.java
-    └── out/
-        ├── persistence/{OrderJpaEntity,OrderJpaRepository,OrderPersistenceAdapter,OrderPersistenceMapper}.java
-        └── client/{CustomerRestClient,CustomerClientAdapter}.java
+com.aishac.customer/
+├── config/          ClockConfiguration, JpaAuditingConfiguration, OpenApiConfiguration,
+│                    CorrelationIdFilter, SensitiveDataMasker(+Customizer)
+├── controller/      CustomerController, CustomerAddressController
+├── dto/             CustomerRequest, CustomerUpdateRequest, BlockCustomerRequest, CustomerResponse,
+│                    AddressRequest, AddressResponse, OrderDataResponse, PageResponse
+├── entity/          BaseEntity, Customer, CustomerAddress, CustomerStatus
+├── exception/       ErrorCode, CommonErrorCode, CustomerErrorCode, BusinessException,
+│                    NotFoundException, ProblemDetailFactory, GlobalExceptionHandler
+├── mapper/          CustomerMapper
+├── repository/      CustomerRepository
+├── service/         CustomerService, CustomerAddressService, CpfValidator, CustomerRules
+│   └── impl/        CustomerServiceImpl, CustomerAddressServiceImpl
+└── specification/   CustomerSpecifications
 ```
 
 ## Esqueletos
 
 ```java
-// application/port/in/CreateOrderCommand.java
-public record CreateOrderCommand(UUID customerId, String idempotencyKey, List<Item> items) {
-    public CreateOrderCommand {
-        Objects.requireNonNull(customerId);
-        items = List.copyOf(items);
-        if (items.isEmpty()) throw new IllegalArgumentException("order must have items");
+// controller: só recebe, valida e delega
+@Tag(name = "Customers", description = "...")
+@RestController
+@RequestMapping("/api/v1/customers")
+@RequiredArgsConstructor
+public class CustomerController {
+
+    private final CustomerService customerService;
+
+    @Operation(summary = "Listar clientes")
+    @GetMapping
+    public PageResponse<CustomerResponse> list(
+            @RequestParam(required = false) String name,
+            @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+                    Pageable pageable) {
+        return PageResponse.of(customerService.list(name, pageable));
     }
-    public record Item(UUID productId, int quantity) {}
 }
 ```
 
 ```java
-// adapter/out/persistence/OrderJpaEntity.java
-@Entity
-@Table(name = "orders")
+// service/impl: regras de negócio e transação
+@Service
+@RequiredArgsConstructor
+class CustomerServiceImpl implements CustomerService {
+
+    private final CustomerRepository customerRepository;
+    private final CustomerMapper customerMapper;
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<CustomerResponse> list(String name, Pageable pageable) {
+        var specification = CustomerSpecifications.withFilters(name);
+        return customerRepository.findAll(specification, pageable).map(customerMapper::toResponse);
+    }
+}
+```
+
+```java
+// entity
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-class OrderJpaEntity {
-    @Id private UUID id;
-    @Version private long version;
-    // ...
-    @Override public boolean equals(Object o) { /* baseado no id, compatível com proxy */ }
-    @Override public int hashCode() { return getClass().hashCode(); }
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@SuperBuilder
+@Entity
+@Table(name = "customers")
+public class Customer extends BaseEntity {
+
+    @Column(name = "full_name", nullable = false, length = 150)
+    private String fullName;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 }
 ```

@@ -1,4 +1,4 @@
-# Infraestrutura local da fase 01: PostgreSQL (customers_db + sales_db) e LocalStack (S3).
+# Infraestrutura local da fase 01: PostgreSQL (aishac_customer + aishac_sales) e LocalStack (S3).
 # Executado apenas pelo usuário. Comandos em infra/docker/README.md.
 name: aishac-shop
 

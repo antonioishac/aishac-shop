@@ -3,39 +3,40 @@
 ## Mapeamento critério → teste
 | Critério | Teste(s) | Nível | Status |
 |---|---|---|---|
-| CA-01 | `CustomerTest.shouldRegisterActiveCustomerWithNormalizedData`, `CustomerApiIT.shouldRegisterCustomerWithNormalizedData` | unitário, integração | ✅ |
-| CA-02 | `CpfTest.shouldRejectInvalidCpf`, `CustomerApiIT.shouldRejectInvalidCpf` | unitário, integração | ✅ |
-| CA-03 | `CustomerServiceTest.shouldRejectDuplicatedCpfOrEmailBeforeSaving`, `CustomerApiIT.shouldRejectDuplicatedCpfEvenFromInactiveCustomer`, `CustomerConcurrencyIT.shouldKeepCpfUniqueUnderConcurrentRegistrations` | unitário, integração, concorrência | ✅ |
-| CA-04 | `ValueObjectsTest.shouldNormalizeEmailToLowerCaseWithoutSurroundingSpaces`, `CustomerApiIT.shouldRejectDuplicatedEmailIgnoringCaseOnCreateAndUpdate` | unitário, integração | ✅ |
+| CA-01 | `CustomerServiceImplTest.shouldCreateActiveCustomerWithNormalizedCpfAndEmail`, `CustomerApiIT.shouldCreateCustomerWithNormalizedData` | unitário, integração | ✅ |
+| CA-02 | `CpfValidatorTest.shouldRejectInvalidCpf`, `CustomerServiceImplTest.shouldRejectInvalidCpfBeforeTouchingTheDatabase`, `CustomerApiIT.shouldRejectInvalidCpf` | unitário, integração | ✅ |
+| CA-03 | `CustomerServiceImplTest.shouldRejectDuplicatedCpfOrEmail`, `CustomerServiceImplTest.shouldTranslateUniqueViolationRaisedByConcurrentRegistration`, `CustomerApiIT.shouldRejectDuplicatedCpfEvenFromInactiveCustomer`, `CustomerConcurrencyIT.shouldKeepCpfUniqueUnderConcurrentRegistrations` | unitário, integração, concorrência | ✅ |
+| CA-04 | `CustomerServiceImplTest.shouldRejectDuplicatedCpfOrEmail`, `CustomerApiIT.shouldRejectDuplicatedEmailIgnoringCaseOnCreateAndUpdate`, `CustomerConcurrencyIT.shouldKeepEmailUniqueUnderConcurrentRegistrations` | unitário, integração, concorrência | ✅ |
 | CA-05 | `CustomerControllerTest.shouldListEveryInvalidFieldOnCreate`, `CustomerControllerTest.shouldRequireVersionOnUpdate` | fatia | ✅ |
-| CA-06 | `CustomerApiIT.shouldGetCustomerByIdOrAnswerNotFound` | integração | ✅ |
-| CA-07 | `CustomerApiIT.shouldFilterAndPaginate` | integração | ✅ |
+| CA-06 | `CustomerServiceImplTest.shouldAnswerNotFoundForUnknownCustomer`, `CustomerApiIT.shouldFindCustomerByIdOrAnswerNotFound` | unitário, integração | ✅ |
+| CA-07 | `CustomerApiIT.shouldFilterSortAndPaginate` | integração | ✅ |
 | CA-08 | `CustomerApiIT.shouldFindCustomerByCpfOrEmailForCheckout` | integração | ✅ |
-| CA-09 | `CustomerTest.shouldUpdateDetailsKeepingCpf`, `CustomerApiIT.shouldUpdateCustomerAndRejectStaleVersion` | unitário, integração | ✅ |
-| CA-10 | `CustomerServiceTest.shouldRejectStaleVersionWithoutSaving`, `CustomerApiIT.shouldUpdateCustomerAndRejectStaleVersion` | unitário, integração | ✅ |
-| CA-11 | `CustomerTest.shouldBlockWithReasonAndUnblock` | unitário | ✅ |
-| CA-12 | `CustomerTest.shouldDeactivateBlockedCustomerClearingBlockData`, `CustomerApiIT.shouldWalkThroughStatusLifecycle` | unitário, integração | ✅ |
-| CA-13 | `CustomerTest.shouldRejectInvalidTransitions`, `CustomerApiIT.shouldWalkThroughStatusLifecycle` | unitário, integração | ✅ |
-| CA-14 | `CustomerTest.shouldRejectChangesWhenInactive`, `CustomerApiIT.shouldWalkThroughStatusLifecycle` | unitário, integração | ✅ |
-| CA-15 | `CustomerTest.shouldMakeFirstAddressDefault`, `CustomerApiIT.shouldManageAddressesKeepingSingleDefault` | unitário, integração | ✅ |
-| CA-16 | `CustomerTest.shouldSwitchDefaultAddressKeepingOnlyOne`, `CustomerApiIT.shouldManageAddressesKeepingSingleDefault` | unitário, integração | ✅ |
-| CA-17 | `CustomerTest.shouldPromoteMostRecentWhenDefaultIsRemoved`, `CustomerApiIT.shouldManageAddressesKeepingSingleDefault` | unitário, integração | ✅ |
-| CA-18 | `CustomerTest.shouldLimitAddressesToTen`, `CustomerConcurrencyIT.shouldNeverExceedAddressLimitUnderConcurrentInclusions` | unitário, concorrência | ✅ |
-| CA-19 | `CustomerControllerTest.shouldValidateAddressFields`, `CustomerApiIT.shouldNotTouchAddressOfAnotherCustomer` | fatia, integração | ✅ |
-| CA-20 | `CustomerApiIT.shouldReturnOrderDataWithDefaultOrChosenAddress` | integração | ✅ |
-| CA-21 | `CustomerApiIT.shouldReturnOrderDataForBlockedCustomerWithoutAddress` | integração | ✅ |
+| CA-09 | `CustomerServiceImplTest.shouldUpdateDetailsKeepingCpf`, `CustomerApiIT.shouldUpdateCustomerAndRejectStaleVersionWithoutChanges` | unitário, integração | ✅ |
+| CA-10 | `CustomerServiceImplTest.shouldRejectStaleVersionInactiveCustomerAndEmailOfAnotherCustomer`, `CustomerApiIT.shouldUpdateCustomerAndRejectStaleVersionWithoutChanges` | unitário, integração | ✅ |
+| CA-11 | `CustomerServiceImplTest.shouldBlockUnblockAndDeactivateWithTimestamps`, `CustomerApiIT.shouldWalkThroughStatusLifecycleAndFreezeInactiveCustomer` | unitário, integração | ✅ |
+| CA-12 | `CustomerServiceImplTest.shouldBlockUnblockAndDeactivateWithTimestamps`, `CustomerApiIT.shouldWalkThroughStatusLifecycleAndFreezeInactiveCustomer` | unitário, integração | ✅ |
+| CA-13 | `CustomerServiceImplTest.shouldRejectInvalidStatusTransitions`, `CustomerApiIT.shouldWalkThroughStatusLifecycleAndFreezeInactiveCustomer` | unitário, integração | ✅ |
+| CA-14 | `CustomerAddressServiceImplTest.shouldRejectAddressChangesWhenCustomerIsInactive`, `CustomerApiIT.shouldWalkThroughStatusLifecycleAndFreezeInactiveCustomer` | unitário, integração | ✅ |
+| CA-15 | `CustomerAddressServiceImplTest.shouldMakeOnlyTheFirstAddressDefault`, `CustomerApiIT.shouldManageAddressesKeepingSingleDefault` | unitário, integração | ✅ |
+| CA-16 | `CustomerAddressServiceImplTest.shouldKeepASingleDefaultWhenSwitching`, `CustomerApiIT.shouldManageAddressesKeepingSingleDefault` | unitário, integração | ✅ |
+| CA-17 | `CustomerAddressServiceImplTest.shouldPromoteMostRecentWhenDefaultIsRemoved`, `CustomerApiIT.shouldManageAddressesKeepingSingleDefault` | unitário, integração | ✅ |
+| CA-18 | `CustomerAddressServiceImplTest.shouldLimitAddressesToTen`, `CustomerApiIT.shouldRejectEleventhAddress`, `CustomerConcurrencyIT.shouldNeverExceedAddressLimitUnderConcurrentInclusions` | unitário, integração, concorrência | ✅ |
+| CA-19 | `CustomerControllerTest.shouldValidateAddressFields`, `CustomerAddressServiceImplTest.shouldUpdateAddressAndRejectUnknownOne`, `CustomerApiIT.shouldNotTouchAddressOfAnotherCustomer` | fatia, unitário, integração | ✅ |
+| CA-20 | `CustomerServiceImplTest.shouldReturnOrderDataWithDefaultChosenOrNoAddress`, `CustomerApiIT.shouldReturnOrderDataWithDefaultOrChosenAddress` | unitário, integração | ✅ |
+| CA-21 | `CustomerServiceImplTest.shouldReturnOrderDataWithDefaultChosenOrNoAddress`, `CustomerApiIT.shouldReturnOrderDataForBlockedCustomerWithoutAddress` | unitário, integração | ✅ |
+
+Também cobrem a feature: `ArchitectureTest` (camadas), `GlobalExceptionHandlerTest` (tradução de erros), `ServiceSkeletonIT` (correlação, máscara de logs, OpenAPI) e `CustomerApiIT.shouldAnswerBadRequestWhenOnlyTheDatabaseCheckRejectsTheData` (CHECK do banco → 400).
 
 ## Passos
 - [x] Spec aprovada (Portão 1)
 - [x] Modelo de dados aprovado (Portão 2)
 - [x] Migration
-- [x] Testes escritos e falhando
-- [x] Domínio
-- [x] Casos de uso e ports
-- [x] Adapters (persistência + entidades JPA)
-- [x] Controller + OpenAPI
+- [x] Entidades, repository e specification
+- [x] Service (regras de negócio) e mapper
+- [x] DTOs, controller e OpenAPI
+- [x] Reestruturação para camadas por tipo (ADR-025), a pedido do usuário
 - [x] `./mvnw verify` verde
 - [x] Coleção `.http` atualizada
 - [ ] Revisão `code-reviewer`: APROVADO
-- [ ] Diagrama/ADR atualizados (se aplicável)
+- [ ] Diagrama/ADR atualizados (ADR-025 feito; páginas de componentes do diagrama pendentes)
 - [ ] Item marcado ✅ no backlog

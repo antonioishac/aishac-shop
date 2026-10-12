@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Aceita |
+| Status | Aceita (ajustada pelo ADR-025: entidades usam `@Setter` e `@SuperBuilder`) |
 | Data | 2026-10-12 |
 | Fase | 01-base-sincrona |
 | Origem | D03 · rule `lombok` |

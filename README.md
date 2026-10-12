@@ -30,8 +30,8 @@ E-commerce de estudo, de ponta a ponta: microserviços Java 25 / Spring Boot 4, 
 Defina no seu ambiente (nunca no repositório), apontando para o **seu container local** com o usuário `claude_mcp`:
 
 ```bash
-export CLAUDE_PG_CUSTOMERS_URL="postgresql://claude_mcp:<senha>@localhost:5432/customers_db"
-export CLAUDE_PG_SALES_URL="postgresql://claude_mcp:<senha>@localhost:5432/sales_db"
+export CLAUDE_PG_CUSTOMERS_URL="postgresql://claude_mcp:<senha>@localhost:5432/aishac_customer"
+export CLAUDE_PG_SALES_URL="postgresql://claude_mcp:<senha>@localhost:5432/aishac_sales"
 ```
 
 Para acompanhar tudo o que o Claude executar no banco, siga o log do container PostgreSQL (comando no `infra/docker/README.md`).

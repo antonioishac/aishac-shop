@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 E-commerce de estudo, construído de ponta a ponta como projeto de referência.
 Backlog e decisões: @docs/backlog/README.md
 
-**Estado atual:** marco 01.1 em andamento. Existem o Docker Compose (`infra/docker/`), o `config-server`, o `config-repo/` e o esqueleto do `customer-service` e do `sales-service` (só `infrastructure/`, sem features). `web-bff` e frontend ainda não foram gerados. Projetos novos são gerados pelo Spring Initializr (Boot 4.1.x, Java 25), com Spotless (Palantir Java Format) e Failsafe no pom, porque o hook `on-stop` roda `spotless:apply`.
+**Estado atual:** marco 01.1 concluído (exceto itens do usuário); marco 01.2 em andamento com a feature de clientes (F01-020) implementada no `customer-service`. O `sales-service` tem só `config/` e `exception/`. `web-bff` e frontend ainda não foram gerados. Projetos novos são gerados pelo Spring Initializr (Boot 4.1.x, Java 25), com Spotless (Palantir Java Format) e Failsafe no pom, porque o hook `on-stop` roda `spotless:apply`.
 
 ## Onde estão as instruções
 
@@ -20,8 +20,8 @@ Backlog e decisões: @docs/backlog/README.md
 
 | Caminho | Conteúdo |
 |---|---|
-| `services/customer-service/` | Microserviço de clientes (banco `customers_db`) |
-| `services/sales-service/` | Microserviço de vendas: módulos `catalog`, `order`, `payment` (banco `sales_db`) |
+| `services/customer-service/` | Microserviço de clientes (banco `aishac_customer`) |
+| `services/sales-service/` | Microserviço de vendas: módulos `catalog`, `order`, `payment` (banco `aishac_sales`) |
 | `services/web-bff/` | BFF do frontend. Só compõe e adapta; sem regra de negócio, sem banco |
 | `services/config-server/` | Spring Cloud Config Server |
 | `config-repo/` | Configuração por serviço e perfil (`local`, `dev`, `prod`) |
@@ -49,7 +49,7 @@ Java 25 · Spring Boot 4.1.x · Spring Cloud 2025.1.x · Maven (wrapper por serv
 
 ## Princípios da base
 
-- Domínio isolado da infraestrutura (hexagonal leve por feature). Modelo de domínio ≠ entidade JPA.
+- **Camadas por tipo** (ADR-025): `config`, `controller`, `dto`, `entity`, `exception`, `mapper`, `repository`, `service` (+ `impl`), `specification`. Controller sem regra de negócio; regras e transações no service. Detalhes na rule `architecture-boundaries`; referência viva: `customer-service`.
 - Contratos versionados (`/api/v1`) e documentados. Serviços só se conhecem por contrato HTTP; **nenhum import de classe entre serviços**.
 - Um banco por serviço; sem FK ou consulta entre bancos.
 - Configuração externa; serviços stateless; health checks; graceful shutdown.

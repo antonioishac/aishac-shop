@@ -5,7 +5,7 @@
 
 | Arquivo | Conteúdo |
 |---|---|
-| `compose.infra.yml` | PostgreSQL 18 (`customers_db`, `sales_db`) e LocalStack (S3) |
+| `compose.infra.yml` | PostgreSQL 18 (`aishac_customer`, `aishac_sales`) e LocalStack (S3) |
 | `compose.apps.yml` | config-server, customer-service, sales-service, web-bff, web. **Inclui** o `compose.infra.yml` |
 | `postgres/init/` | Bancos, usuários por serviço e `claude_mcp` (roda só na primeira criação do volume) |
 | `localstack/init/` | Cria o bucket privado de imagens |
@@ -70,15 +70,15 @@ Cada usuário só acessa o próprio banco:
 
 ```bash
 # deve funcionar
-docker compose -f compose.infra.yml exec postgres psql -U customer_app -d customers_db -c "select current_user"
-docker compose -f compose.infra.yml exec postgres psql -U sales_app    -d sales_db     -c "select current_user"
+docker compose -f compose.infra.yml exec postgres psql -U customer_app -d aishac_customer -c "select current_user"
+docker compose -f compose.infra.yml exec postgres psql -U sales_app    -d aishac_sales     -c "select current_user"
 
 # deve falhar com "permission denied for database"
-docker compose -f compose.infra.yml exec postgres psql -U customer_app -d sales_db -c "select 1"
-docker compose -f compose.infra.yml exec postgres psql -U sales_app    -d customers_db -c "select 1"
+docker compose -f compose.infra.yml exec postgres psql -U customer_app -d aishac_sales -c "select 1"
+docker compose -f compose.infra.yml exec postgres psql -U sales_app    -d aishac_customer -c "select 1"
 
 # claude_mcp: conecta nos dois, mas não cria tabela (deve falhar com "permission denied for schema public")
-docker compose -f compose.infra.yml exec postgres psql -U claude_mcp -d sales_db -c "create table t(id int)"
+docker compose -f compose.infra.yml exec postgres psql -U claude_mcp -d aishac_sales -c "create table t(id int)"
 ```
 
 Dentro do container a autenticação local é `trust`, então não pede senha. Para testar com senha, conecte pela porta publicada com um cliente no host.
@@ -102,8 +102,8 @@ docker compose -f compose.infra.yml logs -f postgres | grep claude_mcp
 Defina no **seu** ambiente (fora do repositório), com a senha que você colocou em `CLAUDE_MCP_DB_PASSWORD`:
 
 ```bash
-export CLAUDE_PG_CUSTOMERS_URL="postgresql://claude_mcp:<senha>@localhost:5432/customers_db"
-export CLAUDE_PG_SALES_URL="postgresql://claude_mcp:<senha>@localhost:5432/sales_db"
+export CLAUDE_PG_CUSTOMERS_URL="postgresql://claude_mcp:<senha>@localhost:5432/aishac_customer"
+export CLAUDE_PG_SALES_URL="postgresql://claude_mcp:<senha>@localhost:5432/aishac_sales"
 ```
 
 Depois, reinicie o Claude Code para os servidores MCP conectarem.

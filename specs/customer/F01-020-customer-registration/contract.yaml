@@ -64,7 +64,7 @@ paths:
         - name: sort
           in: query
           required: false
-          description: "Campo e direção. Campos: fullName, createdAt. Padrão: createdAt,desc"
+          description: "Propriedade e direção (ex.: fullName,asc). Padrão: createdAt,desc. Propriedade inexistente: 400 VALIDATION_ERROR"
           schema: { type: string, example: "fullName,asc" }
       responses:
         "200":
@@ -336,6 +336,7 @@ components:
       name: size
       in: query
       required: false
+      description: Valores acima de 100 são limitados a 100.
       schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
 
   schemas:

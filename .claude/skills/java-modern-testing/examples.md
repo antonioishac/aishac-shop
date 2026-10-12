@@ -68,23 +68,16 @@ void onlyOneOrderShouldWinTheLastItem() throws Exception {
 ```
 
 ## ArchUnit
+Exemplo real: `services/customer-service/src/test/java/com/aishac/customer/ArchitectureTest.java` (camadas por tipo, ADR-025).
 ```java
-@AnalyzeClasses(packages = "com.aishac.sales", importOptions = ImportOption.DoNotIncludeTests.class)
-class ArchitectureTest {
-
-    @ArchTest
-    static final ArchRule domainIsFrameworkFree = noClasses()
-        .that().resideInAPackage("..domain..")
-        .should().dependOnClassesThat()
-        .resideInAnyPackage("org.springframework..", "jakarta.persistence..", "tools.jackson..");
-
-    @ArchTest
-    static final ArchRule noFieldInjection = noFields()
-        .should().beAnnotatedWith(Autowired.class);
-
-    @ArchTest
-    static final ArchRule catalogDoesNotKnowOrder = noClasses()
-        .that().resideInAPackage("..sales.catalog..")
-        .should().dependOnClassesThat().resideInAnyPackage("..sales.order..", "..sales.payment..");
-}
+layeredArchitecture()
+        .consideringOnlyDependenciesInLayers()
+        .withOptionalLayers(true)
+        .layer("Controller").definedBy(BASE + ".controller..")
+        .layer("Service").definedBy(BASE + ".service..")
+        .layer("Repository").definedBy(BASE + ".repository..")
+        .whereLayer("Controller").mayNotBeAccessedByAnyLayer()
+        .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller")
+        .whereLayer("Repository").mayOnlyBeAccessedByLayers("Service")
+        .check(classes);
 ```

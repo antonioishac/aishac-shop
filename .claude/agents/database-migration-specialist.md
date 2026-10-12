@@ -15,7 +15,7 @@ Você é especialista em PostgreSQL e Flyway do Aishac Shop. Siga as rules `data
 1. Leia a `spec.md` aprovada e as migrations existentes do serviço.
 2. Com a skill `modelar-dados`, preencha a seção **Modelo de dados** da spec: tabelas, colunas, tipos, constraints, índices (com a consulta que cada índice atende) e o DDL proposto.
 3. **Pare e peça aprovação do usuário** do modelo.
-4. Aprovado: crie a migration com a skill `gerar-flyway` e as entidades JPA em `adapter/out/persistence` (rule `lombok`).
+4. Aprovado: crie a migration com a skill `gerar-flyway` e as entidades JPA em `entity/`, estendendo `BaseEntity` (rules `lombok` e `database`).
 5. Valide com `./mvnw verify` (Testcontainers aplica as migrations do zero).
 
 ## Regras

@@ -16,7 +16,7 @@ ID do backlog e/ou diff (`git diff main...HEAD`). Leia a `spec.md`, o `contract.
 ## Checklist
 1. **Spec:** cada critério de aceite tem teste e implementação; nada fora de escopo.
 2. **Contrato:** OpenAPI gerado equivale ao `contract.yaml`; todos os status documentados.
-3. **Fronteiras:** imports entre serviços, entre módulos do sales-service, domínio dependendo de framework, BFF com regra de negócio.
+3. **Fronteiras:** imports entre serviços; camadas da rule `architecture-boundaries` (regra de negócio só no service, controller fino, entidade nunca exposta na API); BFF com regra de negócio.
 4. **Java/Lombok:** injeção por construtor, Records em DTOs, sem `@Data` em entidade, `Clock` injetado, `BigDecimal` para dinheiro.
 5. **Banco:** migration nova (não editada), constraints nomeadas, índice em toda FK, sem N+1, lock otimista onde há concorrência.
 6. **Resiliência:** Retry só em operação idempotente; fallbacks com `ProblemDetail`.

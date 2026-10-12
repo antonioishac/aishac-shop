@@ -64,7 +64,7 @@ $port = if ($values['POSTGRES_PORT']) { $values['POSTGRES_PORT'] } else { '5432'
 $mcpPassword = $values['CLAUDE_MCP_DB_PASSWORD']
 if (-not $mcpPassword) { throw 'CLAUDE_MCP_DB_PASSWORD vazio no .env.' }
 
-foreach ($db in @{ CLAUDE_PG_CUSTOMERS_URL = 'customers_db'; CLAUDE_PG_SALES_URL = 'sales_db' }.GetEnumerator()) {
+foreach ($db in @{ CLAUDE_PG_CUSTOMERS_URL = 'aishac_customer'; CLAUDE_PG_SALES_URL = 'aishac_sales' }.GetEnumerator()) {
     $url = "postgresql://claude_mcp:$mcpPassword@localhost:$port/$($db.Value)"
     [Environment]::SetEnvironmentVariable($db.Key, $url, 'User')
     Write-Host "$($db.Key) definida no seu usuario (banco $($db.Value), porta $port)."

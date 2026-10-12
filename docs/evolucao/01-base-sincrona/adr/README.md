@@ -7,7 +7,7 @@ Decisões de arquitetura da fase. A numeração é contínua entre fases. Para r
 | [ADR-001](ADR-001-monorepo-com-build-independente.md) | Monorepo com build independente por serviço | D01 |
 | [ADR-002](ADR-002-stack-base-java-25-spring-boot-4.md) | Java 25, Spring Boot 4.1 e Spring Cloud 2025.1 | D02 |
 | [ADR-003](ADR-003-lombok-com-regras-de-uso.md) | Lombok mantido, com regras de uso | D03 |
-| [ADR-004](ADR-004-arquitetura-hexagonal-por-feature.md) | Hexagonal leve por feature, verificada pelo ArchUnit | D04 |
+| [ADR-004](ADR-004-arquitetura-hexagonal-por-feature.md) | ~~Hexagonal leve por feature~~ (substituída pelo ADR-025) | D04 |
 | [ADR-005](ADR-005-dois-microservicos-catalogo-como-modulo.md) | Dois microserviços; catálogo como módulo de vendas | D05 |
 | [ADR-006](ADR-006-fase-01-100-por-cento-sincrona.md) | Fase 01 100% síncrona, sem Gateway nem autenticação | D06 · D24 |
 | [ADR-007](ADR-007-banco-por-servico-e-convencoes.md) | Um banco por serviço e convenções de modelagem | D07 · D08 |
@@ -25,8 +25,9 @@ Decisões de arquitetura da fase. A numeração é contínua entre fases. Para r
 | [ADR-019](ADR-019-sem-eureka-descoberta-por-dns.md) | Sem Eureka: descoberta por DNS | D22 |
 | [ADR-020](ADR-020-idioma-e-documentacao-por-fase.md) | Inglês no código, português na documentação, diagrama por fase | D16 · D23 |
 | [ADR-021](ADR-021-bff-na-fase-01.md) | BFF já na fase 01 | D26 |
-| [ADR-022](ADR-022-versionamento-de-api-nativo-spring-7.md) | Versionamento de API nativo do Spring 7 | F01-012 |
+| [ADR-022](ADR-022-versionamento-de-api-nativo-spring-7.md) | ~~Versionamento de API nativo do Spring 7~~ (substituída pelo ADR-025) | F01-012 |
 | [ADR-023](ADR-023-logs-json-correlacao-e-mascara.md) | Logs JSON, ID de correlação e máscara de dados pessoais | F01-012 |
 | [ADR-024](ADR-024-estrategia-de-testes-gates-e-ci.md) | Testes, gates de qualidade e CI por serviço | D25 · F01-013 · F01-014 |
+| [ADR-025](ADR-025-camadas-por-tipo.md) | Camadas por tipo (controller, service, repository...) no lugar da hexagonal | Decisão do usuário · substitui ADR-004 e ADR-022 |
 
 Decisões D01–D26 do registro de concepção (`docs/backlog/README.md`): todas cobertas acima.

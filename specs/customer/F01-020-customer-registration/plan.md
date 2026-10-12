@@ -1,45 +1,49 @@
 # Plano técnico — F01-020 (implementação F01-021 a F01-024 e F01-026)
 
 ## Visão geral
-Feature `customer` no customer-service, em hexagonal leve (ADR-004). `Customer` é o agregado raiz e contém os `Address`; toda regra de status, limite e endereço padrão vive no domínio, sem Spring. Comandos carregam o agregado inteiro; consultas de listagem e detalhe usam um **modelo de leitura** (`CustomerView`), sem endereços, para evitar N+1. O banco reforça as invariantes (UNIQUE, CHECK, EXCLUDE adiável) e as violações concorrentes são traduzidas para os códigos do catálogo.
+Cadastro de clientes no customer-service, em **camadas por tipo** (ADR-025). O controller só valida e delega; as regras de negócio da spec ficam nos services (`CustomerServiceImpl`, `CustomerAddressServiceImpl`) e no banco (UNIQUE, CHECK, EXCLUDE adiável). Endereços são entidades filhas de `Customer` (cascade), sem repositório próprio. A listagem usa `Specification` + `Pageable` e não toca a coleção de endereços (sem N+1).
+
+> Versão anterior deste plano usava hexagonal leve (ADR-004). Reescrito após a mudança de arquitetura pedida pelo usuário.
 
 ## Arquivos
 | Camada | Arquivo | Ação |
 |---|---|---|
-| shared/domain | `DomainException`, `ErrorCode`, `ErrorCategory` | criar: base das exceções e catálogo (ADR-008) |
-| shared/application | `IdGenerator`, `PageQuery`, `PageResult` | criar |
-| customer/domain | `Customer`, `Address`, `AddressData`, `Cpf`, `Email`, `Phone`, `CustomerStatus`, `BrazilianState`, `CustomerErrorCode`, exceções | criar |
-| customer/application/port/in | `RegisterCustomerUseCase`, `UpdateCustomerUseCase`, `ChangeCustomerStatusUseCase`, `ManageAddressesUseCase`, `CustomerQueries` + comandos (Records) | criar |
-| customer/application/port/out | `LoadCustomerPort`, `SaveCustomerPort`, `CustomerQueryPort`, `CustomerView`, `CustomerFilter`, `OrderDataView` | criar |
-| customer/application/service | `CustomerService`, `CustomerAddressService`, `CustomerQueryService` | criar (`@Transactional`) |
-| customer/adapter/out/persistence | `CustomerJpaEntity`, `CustomerAddressJpaEntity`, `CustomerJpaRepository`, `CustomerPersistenceAdapter`, `CustomerPersistenceMapper` (MapStruct), `CustomerSpecifications` | criar |
-| customer/adapter/in/web | `CustomerController`, `CustomerAddressController`, `OrderDataController`, `CustomerWebMapper` (MapStruct), `dto/*` | criar |
-| infrastructure | `UuidV7Generator`; `GlobalExceptionHandler` (DomainException, lock otimista, validação de parâmetros) | criar / alterar |
+| entity | `BaseEntity` (UUID v7, auditoria), `Customer`, `CustomerAddress`, `CustomerStatus` | criar |
+| repository | `CustomerRepository` (`findWithAddressesById`, `findForAddressChange` com trava, `existsBy...`) | criar |
+| specification | `CustomerSpecifications.withFilters(name, email, cpf, status)` | criar |
+| mapper | `CustomerMapper` (MapStruct) | criar |
+| service | `CustomerService`, `CustomerAddressService`, `CpfValidator`, `CustomerRules`; `impl/CustomerServiceImpl`, `impl/CustomerAddressServiceImpl` | criar |
+| dto | `CustomerRequest`, `CustomerUpdateRequest`, `BlockCustomerRequest`, `CustomerResponse`, `AddressRequest`, `AddressResponse`, `OrderDataResponse`, `PageResponse` | criar |
+| controller | `CustomerController` (inclui `order-data`), `CustomerAddressController` | criar |
+| exception | `ErrorCode`, `CommonErrorCode`, `CustomerErrorCode`, `BusinessException`, `NotFoundException`, `ProblemDetailFactory`, `GlobalExceptionHandler` | criar |
+| config | `ClockConfiguration` (precisão de µs), `JpaAuditingConfiguration`, `OpenApiConfiguration` (cabeçalho de correlação), `CorrelationIdFilter`, máscara de logs | criar |
 | resources/db/migration | `V1__create_customers.sql`, `V2__create_customer_addresses.sql` | criar |
-| test | unitários de domínio e serviço, fatia web, `CustomerApiIT`, `CustomerTestBuilder` | criar |
+| test | unitários dos services, `@WebMvcTest`, handler *standalone*, `CustomerApiIT`, `CustomerConcurrencyIT`, `ArchitectureTest` | criar |
 
 ## Padrões aplicados
 | Padrão | Onde | Por quê |
 |---|---|---|
-| Aggregate (DDD) | `Customer` + `Address` | Limite de 10 e padrão único são invariantes do cliente |
-| Value Object | `Cpf`, `Email`, `Phone` | Validação e normalização num só lugar (RN-02, RN-04) |
-| Factory method | `Customer.register` / `Customer.restore` | Separa criação (regras) de reconstituição (persistência) |
-| Adapter / Ports | `*PersistenceAdapter`, controllers | Domínio isolado da infraestrutura |
-| CQRS leve | `CustomerQueryPort` + `CustomerView` | Leituras sem carregar endereços (sem N+1) |
+| Service layer (interface + impl) | `service/` | Regras de negócio num só lugar; controller fino |
+| Specification | `CustomerSpecifications` | Filtros combináveis sem explosão de `findByXAndY` |
+| Builder | entidades (`@SuperBuilder`) | Criação legível em service e testes |
+| Catálogo de erros | `ErrorCode` + enums | Código estável e status HTTP definidos por erro |
 
 ## Resiliência e concorrência
-- Lock otimista na raiz (`@Version` em `customers`): o comando traz a `version` lida; divergência → `CONCURRENT_MODIFICATION`. Corrida entre transações → `OptimisticLockingFailureException` → mesmo código.
-- Operações de endereço alteram `updated_at` da raiz, o que incrementa a `version` e serializa inclusões concorrentes (limite de 10).
-- CPF/e-mail duplicados: checagem prévia para mensagem amigável; garantia pela UNIQUE, traduzida no adapter pelo nome da constraint.
-- Endereço padrão: EXCLUDE adiável no banco (verificada no COMMIT).
-- Sem chamadas externas: não se aplica Resilience4j.
+- **Dados e status:** `@Version` em `Customer`; o `PUT` traz a `version` lida, e divergência gera `CONCURRENT_MODIFICATION`. Corrida entre transações gera `OptimisticLockingFailureException`, traduzida para o mesmo código.
+- **Endereços:** `findForAddressChange` com `PESSIMISTIC_FORCE_INCREMENT` trava o cliente e incrementa a versão na hora. Inclusões simultâneas viram sequenciais, e o 11º endereço recebe `ADDRESS_LIMIT_EXCEEDED` de forma determinística.
+- **CPF/e-mail duplicados:** checagem prévia para mensagem amigável; a garantia em corrida é a UNIQUE, traduzida no service pelo nome da constraint.
+- **CHECK violado** (ex.: contagem de caracteres diferente entre Java e PostgreSQL): 400 `VALIDATION_ERROR` no handler.
+- Sem chamadas externas: Resilience4j não se aplica.
 
 ## Configuração nova
-Nenhuma.
+| Propriedade | local | dev | prod |
+|---|---|---|---|
+| `spring.data.web.pageable.default-page-size` / `max-page-size` (comum) | 20 / 100 | 20 / 100 | 20 / 100 |
+| `spring.datasource.username` | `${DB_USERNAME:customer_app}` | idem | idem |
 
 ## Dependências novas
-Nenhuma. UUID v7 gerado por `UuidV7Generator` (48 bits de tempo do `Clock` + aleatório), sem biblioteca.
+Nenhuma. UUID v7 pelo próprio Hibernate (`@UuidGenerator(style = VERSION_7)`).
 
 ## Riscos
-- `CHAR(11)`/`CHAR(8)` com `ddl-auto=validate` exigem mapeamento explícito do tipo (`@JdbcTypeCode(SqlTypes.CHAR)`).
-- Busca por nome não ignora acentos ("Joao" não acha "João"): fora de escopo, registrado na spec.
+- Busca por nome não ignora acentos ("Joao" não acha "João"): fora de escopo.
+- Entidades com `@Setter`: as invariantes dependem de toda alteração passar pelos services (e do banco).

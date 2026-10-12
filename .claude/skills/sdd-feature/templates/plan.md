@@ -6,11 +6,13 @@
 ## Arquivos
 | Camada | Arquivo | Ação |
 |---|---|---|
-| domain | | criar / alterar |
-| application | | |
-| adapter/in/web | | |
-| adapter/out/... | | |
-| infrastructure | | |
+| entity | | criar / alterar |
+| repository / specification | | |
+| mapper | | |
+| service (+ impl) | | |
+| dto | | |
+| controller | | |
+| exception / config | | |
 | test | | |
 
 ## Padrões aplicados

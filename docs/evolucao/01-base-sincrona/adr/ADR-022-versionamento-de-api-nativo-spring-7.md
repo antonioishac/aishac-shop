@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Aceita |
+| Status | Substituída por ADR-025 |
 | Data | 2026-10-12 |
 | Fase | 01-base-sincrona |
 | Origem | Princípio "contratos versionados (`/api/v1`)" · F01-012 |

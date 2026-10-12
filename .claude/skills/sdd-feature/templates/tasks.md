@@ -10,10 +10,9 @@
 - [ ] Modelo de dados aprovado (Portão 2)
 - [ ] Migration + entidades
 - [ ] Testes escritos e falhando
-- [ ] Domínio
-- [ ] Casos de uso e ports
-- [ ] Adapters
-- [ ] Controller + OpenAPI
+- [ ] Entidades, repository e specification
+- [ ] Service (regras de negócio) e mapper
+- [ ] DTOs, controller e OpenAPI
 - [ ] `./mvnw verify` verde
 - [ ] Coleção `.http` atualizada
 - [ ] Revisão `code-reviewer`: APROVADO
