@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 E-commerce de estudo, construído de ponta a ponta como projeto de referência.
 Backlog e decisões: @docs/backlog/README.md
 
-**Estado atual:** só a estrutura do Claude Code e a documentação existem; os serviços e o frontend ainda não foram gerados (cada pasta tem apenas um `CLAUDE.md`). O primeiro passo é o marco 01.1 do backlog (`docs/backlog/fase-01-base-sincrona.md`).
+**Estado atual:** marco 01.1 em andamento. Existem o Docker Compose (`infra/docker/`), o `config-server` e o `config-repo/`; os demais serviços e o frontend ainda não foram gerados (as pastas têm apenas `CLAUDE.md`). Projetos novos são gerados pelo Spring Initializr (Boot 4.1.x, Java 25), com Spotless (Palantir Java Format) e Failsafe no pom, porque o hook `on-stop` roda `spotless:apply`.
 
 ## Onde estão as instruções
 

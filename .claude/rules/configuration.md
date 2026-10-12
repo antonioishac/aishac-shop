@@ -10,6 +10,7 @@ paths:
 - Cada serviço mantém localmente apenas `spring.application.name` e `spring.config.import=configserver:${CONFIG_SERVER_URL:http://localhost:8888}`, com `spring.cloud.config.fail-fast=true` e retry.
 - Todo o resto vive em `config-repo/`, em `.properties`:
   - `application.properties` → comum a todos os serviços;
+  - `application-<perfil>.properties` → comum a todos os serviços num perfil (ex.: nível e formato de log);
   - `<servico>.properties` → comum aos perfis do serviço;
   - `<servico>-<perfil>.properties` → `local`, `dev`, `prod`.
 - **Segredos nunca versionados.** Use `${DB_PASSWORD}`, `${AWS_REGION}` etc., preenchidos por variáveis de ambiente.
