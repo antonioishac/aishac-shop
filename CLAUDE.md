@@ -85,7 +85,7 @@ Prefira muitos unitários e poucos de integração. Testes de domínio não sobe
 ## Comandos (por serviço, dentro de `services/<servico>/`)
 
 - `./mvnw test` → unitários e de fatia
-- `./mvnw verify` → tudo, incluindo `*IT` (Testcontainers)
+- `./mvnw verify` → tudo, incluindo `*IT` (Testcontainers) e os gates: Spotless `check`, `ArchitectureTest` (ArchUnit) e cobertura JaCoCo mínima (80% linhas, 70% desvios, unitários + `*IT`). É o que a CI roda.
 - `./mvnw spotless:apply` → formatação
 - `./mvnw test -Dtest=CustomerTest` (ou `-Dtest='CustomerTest#shouldRejectInvalidCpf'`) → um teste unitário/de fatia
 - `./mvnw verify -Dit.test=CreateOrderIT` → um único `*IT` (Failsafe; os unitários também rodam)
@@ -93,6 +93,11 @@ Prefira muitos unitários e poucos de integração. Testes de domínio não sobe
 Os `*IT` usam Testcontainers e exigem o Docker Desktop ativo (o usuário liga; o Claude não executa `docker`). No Windows fora do Git Bash, use `mvnw.cmd`. Testes de integração com S3 precisam de `LOCALSTACK_AUTH_TOKEN` no ambiente.
 
 Frontend (`web/aishac-shop-web/`): `npm run test`, `npm run lint`, `npm run build`, `npm run generate:api` (regera o cliente a partir do OpenAPI do BFF; rode após mudar o contrato do BFF). Um teste: `npx vitest run src/features/store/cart`.
+
+## CI (`.github/`)
+
+- Um workflow por serviço (`<servico>.yml`), filtrado por caminho (`services/<servico>/**` e `config-repo/**`), chamando o reutilizável `_java-service.yml` (`./mvnw verify`). Serviço novo = novo workflow chamador + entrada no `dependabot.yml`.
+- `security.yml`: Gitleaks (segredos no histórico) e OSV-Scanner (dependências vulneráveis; em PR reprova só vulnerabilidade nova).
 
 ## Commits
 

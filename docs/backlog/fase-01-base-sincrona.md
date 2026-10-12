@@ -36,8 +36,8 @@
 | F01-010 | TEC | **Docker Compose** (`infra/docker/`): `compose.infra.yml` (PostgreSQL, LocalStack), `compose.apps.yml` (config-server, serviços, web-bff, web), `postgres/init/` (bancos, usuários por serviço, `claude_mcp`, revogação de acesso público), `.env.example`, `README.md` com comandos. **Você executa.** | Claude | ✅ |
 | F01-011 | TEC | **Config Server** + `config-repo/` com `application.properties` e arquivos por serviço × perfil (`local`, `dev`, `prod`); `fail-fast` com retry; segredos só via `${VAR}` | Claude | ✅ |
 | F01-012 | TEC | **Esqueleto dos serviços** (Boot 4.1, Java 25): Virtual Threads, Actuator (liveness/readiness), graceful shutdown, logs JSON, **ID de correlação** propagado, máscara de CPF/e-mail nos logs, `ProblemDetail` base, OpenAPI, versionamento de API, `Clock` injetável, Lombok + MapStruct, Dockerfile multi-stage | Claude | ✅ |
-| F01-013 | TEC | **Gates de qualidade**: ArchUnit (fronteiras de camada e entre módulos), JaCoCo (cobertura mínima), Spotless, varredura de dependências vulneráveis e de segredos; separação `*Test` / `*IT` | Claude | ⬜ |
-| F01-014 | TEC | **CI** (GitHub Actions): workflow por serviço e frontend com filtro de caminho; build, testes (incluindo Testcontainers) e gates | Claude | ⬜ |
+| F01-013 | TEC | **Gates de qualidade**: ArchUnit (fronteiras de camada e entre módulos), JaCoCo (cobertura mínima), Spotless, varredura de dependências vulneráveis e de segredos; separação `*Test` / `*IT` | Claude | ✅ |
+| F01-014 | TEC | **CI** (GitHub Actions): workflow por serviço e frontend com filtro de caminho; build, testes (incluindo Testcontainers) e gates | Claude | ✅ |
 | F01-015 | TEC | **Experiência de desenvolvimento**: `Makefile`/Taskfile com comandos (sem executar Docker pelo Claude), coleção de requisições `.http` versionada | Claude | ⬜ |
 | F01-016 | TEC | Git: estratégia de branches, template de PR, Conventional Commits, CHANGELOG, versionamento semântico por serviço | Claude | ⬜ |
 | F01-017 | DOC | `docs/evolucao/01-base-sincrona/`: `adr/`, `limitacoes.md` (**modelo vazio**) | Claude | ✅ |
@@ -127,7 +127,7 @@ Módulo `order` e `payment` do `sales-service`
 
 | ID | Tipo | Item | Dono | Status |
 |---|---|---|---|---|
-| F01-060 | TEC | Setup: Vite + React + TypeScript, Tailwind, Lucide, ESLint/Prettier, Vitest + Testing Library | Claude | ⬜ |
+| F01-060 | TEC | Setup: Vite + React + TypeScript, Tailwind, Lucide, ESLint/Prettier, Vitest + Testing Library; **workflow de CI do frontend** (padrão do F01-014) | Claude | ⬜ |
 | F01-061 | TEC | Cliente gerado a partir do **OpenAPI do BFF** (o frontend não conhece os serviços) + Axios (interceptor de ID de correlação e `ProblemDetail`) + TanStack Query | Claude | ⬜ |
 | F01-062 | FEAT | Loja: listagem com filtros e paginação, detalhe do produto com galeria | Claude | ⬜ |
 | F01-063 | FEAT | Carrinho com Zustand, persistido no navegador | Claude | ⬜ |

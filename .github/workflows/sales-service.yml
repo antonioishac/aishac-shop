@@ -1,0 +1,29 @@
+name: sales-service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - services/sales-service/**
+      - config-repo/**
+      - .github/workflows/sales-service.yml
+      - .github/workflows/_java-service.yml
+  pull_request:
+    paths:
+      - services/sales-service/**
+      - config-repo/**
+      - .github/workflows/sales-service.yml
+      - .github/workflows/_java-service.yml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    uses: ./.github/workflows/_java-service.yml
+    with:
+      service: sales-service
