@@ -1,6 +1,11 @@
 # config-server
 
-Spring Cloud Config Server servindo `config-repo/` no perfil **`native`** (lê do disco; no container, `config-repo/` é montado em `/config-repo` via `CONFIG_REPO_LOCATION`).
+Spring Cloud Config Server servindo `config-repo/`. O backend é escolhido pelo perfil **do próprio servidor** (independente dos perfis `local`/`dev`/`prod` pedidos pelos serviços):
+
+| Perfil do servidor | Backend | Uso |
+|---|---|---|
+| `native` (padrão) | Disco: `CONFIG_REPO_LOCATION` (no container, `/config-repo` montado) | Local: edita e vê na hora |
+| `git` | `config-repo/` da branch `main` no GitHub (`CONFIG_GIT_URI`, `CONFIG_GIT_LABEL`) | dev/prod: padrão de mercado, versionado e auditável. Só serve o que foi **commitado e publicado** |
 
 - Nenhum segredo em `config-repo/`: apenas referências `${VAR}`. O `ConfigRepoSecretsTest` reprova chaves sensíveis (`password`, `secret`, `token`, ...) com valor literal.
 - Perfis: `local` (docker-compose + LocalStack), `dev` (AWS real), `prod` (só configuração, não implantado).
