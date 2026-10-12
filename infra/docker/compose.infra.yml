@@ -1,0 +1,69 @@
+# Infraestrutura local da fase 01: PostgreSQL (customers_db + sales_db) e LocalStack (S3).
+# Executado apenas pelo usuário. Comandos em infra/docker/README.md.
+name: aishac-shop
+
+services:
+  postgres:
+    image: postgres:18.4-alpine
+    container_name: aishac-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?defina POSTGRES_SUPERUSER_PASSWORD no .env}
+      POSTGRES_DB: postgres
+      # Lidas pelos scripts de postgres/init (só na primeira inicialização do volume).
+      CUSTOMER_DB_PASSWORD: ${CUSTOMER_DB_PASSWORD:?defina CUSTOMER_DB_PASSWORD no .env}
+      SALES_DB_PASSWORD: ${SALES_DB_PASSWORD:?defina SALES_DB_PASSWORD no .env}
+      CLAUDE_MCP_DB_PASSWORD: ${CLAUDE_MCP_DB_PASSWORD:?defina CLAUDE_MCP_DB_PASSWORD no .env}
+    command:
+      - postgres
+      # Prefixo com usuário e banco: permite filtrar no log tudo o que o claude_mcp executa.
+      - -c
+      - log_line_prefix=%m [%p] %u@%d
+      - -c
+      - log_connections=on
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # A partir do PostgreSQL 18, o volume é montado em /var/lib/postgresql (PGDATA fica num subdiretório por versão).
+      - postgres-data:/var/lib/postgresql
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    mem_limit: 512m
+    networks:
+      - aishac-net
+
+  localstack:
+    # Imagem única desde a 2026.03: exige LOCALSTACK_AUTH_TOKEN (plano Hobby).
+    image: localstack/localstack:2026.03.0
+    container_name: aishac-localstack
+    environment:
+      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:?defina LOCALSTACK_AUTH_TOKEN no .env}
+      SERVICES: s3
+      AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
+      PRODUCT_IMAGES_BUCKET: ${PRODUCT_IMAGES_BUCKET:-aishac-product-images-local}
+    ports:
+      - "127.0.0.1:${LOCALSTACK_PORT:-4566}:4566"
+    volumes:
+      - ./localstack/init:/etc/localstack/init/ready.d:ro
+    healthcheck:
+      # Saudável só quando o bucket criado pelo script de init já existe.
+      test: ["CMD-SHELL", "awslocal s3api head-bucket --bucket \"$$PRODUCT_IMAGES_BUCKET\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    mem_limit: 1g
+    networks:
+      - aishac-net
+
+volumes:
+  postgres-data:
+
+networks:
+  aishac-net:
+    name: aishac-net

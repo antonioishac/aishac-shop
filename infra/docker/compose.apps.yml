@@ -1,0 +1,131 @@
+# Aplicações da fase 01. Inclui a infraestrutura, então este arquivo sobe tudo.
+# Executado apenas pelo usuário. Comandos em infra/docker/README.md.
+# Os Dockerfiles dos serviços nascem no esqueleto (F01-012) e precisam ter `curl` para o healthcheck.
+name: aishac-shop
+
+include:
+  - compose.infra.yml
+
+x-java-service: &java-service
+  restart: unless-stopped
+  mem_limit: 768m
+  networks:
+    - aishac-net
+  environment: &java-env
+    SPRING_PROFILES_ACTIVE: local
+    CONFIG_SERVER_URL: http://config-server:8888
+    JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75
+
+services:
+  config-server:
+    <<: *java-service
+    build: ../../services/config-server
+    image: aishac/config-server:local
+    container_name: aishac-config-server
+    environment:
+      # Perfil native: lê o config-repo montado no container (F01-011).
+      SPRING_PROFILES_ACTIVE: native
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75
+    volumes:
+      - ../../config-repo:/config-repo:ro
+    ports:
+      - "127.0.0.1:8888:8888"
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8888/actuator/health/readiness"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
+  customer-service:
+    <<: *java-service
+    build: ../../services/customer-service
+    image: aishac/customer-service:local
+    container_name: aishac-customer-service
+    environment:
+      <<: *java-env
+      DB_HOST: postgres
+      DB_PASSWORD: ${CUSTOMER_DB_PASSWORD:?defina CUSTOMER_DB_PASSWORD no .env}
+    ports:
+      - "127.0.0.1:8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/actuator/health/readiness"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 40s
+
+  sales-service:
+    <<: *java-service
+    build: ../../services/sales-service
+    image: aishac/sales-service:local
+    container_name: aishac-sales-service
+    environment:
+      <<: *java-env
+      DB_HOST: postgres
+      DB_PASSWORD: ${SALES_DB_PASSWORD:?defina SALES_DB_PASSWORD no .env}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      # Credenciais fictícias aceitas pelo LocalStack; no perfil dev vale a cadeia padrão da AWS.
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      PRODUCT_IMAGES_BUCKET: ${PRODUCT_IMAGES_BUCKET:-aishac-product-images-local}
+    ports:
+      - "127.0.0.1:8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      # Sem dependência do customer-service: a resiliência à ausência dele é parte do estudo (F01-050).
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8082/actuator/health/readiness"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 40s
+
+  web-bff:
+    <<: *java-service
+    build: ../../services/web-bff
+    image: aishac/web-bff:local
+    container_name: aishac-web-bff
+    mem_limit: 512m
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      # Os serviços de negócio não são pré-requisito: o BFF degrada parcialmente (F01-059).
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 40s
+
+  web:
+    build: ../../web/aishac-shop-web
+    image: aishac/web:local
+    container_name: aishac-web
+    restart: unless-stopped
+    mem_limit: 128m
+    networks:
+      - aishac-net
+    ports:
+      - "127.0.0.1:3000:80"
+    depends_on:
+      web-bff:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
