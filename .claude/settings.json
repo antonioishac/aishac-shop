@@ -28,6 +28,8 @@
       "Bash(docker *)",
       "Bash(docker-compose *)",
       "Bash(podman *)",
+      "Bash(task apps:*)",
+      "Bash(task infra:*)",
       "Bash(terraform apply*)",
       "Bash(terraform destroy*)",
       "Bash(git push --force*)",

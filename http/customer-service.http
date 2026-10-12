@@ -1,0 +1,21 @@
+### Readiness (usado pelo healthcheck do compose e pelas probes do Kubernetes)
+GET {{customerService}}/actuator/health/readiness
+
+### Liveness
+GET {{customerService}}/actuator/health/liveness
+
+### Contrato OpenAPI
+GET {{customerService}}/v3/api-docs
+
+### Swagger UI (perfis local e dev) — abra no navegador
+GET {{customerService}}/swagger-ui/index.html
+
+### ID de correlação: o mesmo valor volta no cabeçalho X-Correlation-Id e aparece nos logs
+GET {{customerService}}/api/v1/does-not-exist
+X-Correlation-Id: {{correlationId}}
+
+### Rota inexistente: 404 em ProblemDetail com code, correlationId e timestamp
+GET {{customerService}}/api/v1/does-not-exist
+
+### Versão de API não suportada: 400 em ProblemDetail
+GET {{customerService}}/api/v2/customers

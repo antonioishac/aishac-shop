@@ -9,7 +9,8 @@ E-commerce de estudo, de ponta a ponta: microserviços Java 25 / Spring Boot 4, 
 ## Pré-requisitos locais
 
 - Java 25, Node.js LTS, Docker (você controla os containers)
-- `bash` e `jq` (usados pelos hooks do Claude Code; no Windows, use WSL)
+- `bash` (Git Bash no Windows) e `jq` **ou** Python 3, usados pelos hooks do Claude Code; sem nenhum dos dois, os hooks bloqueiam por segurança
+- [Task](https://taskfile.dev) para os atalhos do `Taskfile.yml` (`winget install Task.Task`; `task --list`)
 - `uv` (executa o servidor MCP do PostgreSQL via `uvx`)
 - Conta LocalStack (plano Hobby) com `LOCALSTACK_AUTH_TOKEN`
 

@@ -1,0 +1,105 @@
+# Comandos do dia a dia. Requer Task (https://taskfile.dev): winget install Task.Task
+# Liste tudo com: task --list
+#
+# Tarefas infra:* e apps:* executam Docker: só o usuário roda (premissa P1; bloqueadas para o Claude).
+version: "3"
+
+vars:
+  SERVICES: config-server customer-service sales-service
+  MVNW: '{{if eq OS "windows"}}mvnw.cmd{{else}}./mvnw{{end}}'
+  COMPOSE_INFRA: docker compose -f compose.infra.yml
+  COMPOSE_APPS: docker compose -f compose.apps.yml
+
+tasks:
+  # --- Build e testes (por serviço: task test:customer-service) ---------------
+
+  test:*:
+    desc: Testes unitários e de fatia de um serviço (ex. task test:sales-service)
+    vars: { SERVICE: "{{index .MATCH 0}}" }
+    dir: services/{{.SERVICE}}
+    cmds: ["{{.MVNW}} -B test"]
+
+  verify:*:
+    desc: Build completo de um serviço, com *IT (Docker ativo), ArchUnit, cobertura e Spotless
+    vars: { SERVICE: "{{index .MATCH 0}}" }
+    dir: services/{{.SERVICE}}
+    cmds: ["{{.MVNW}} -B verify"]
+
+  format:*:
+    desc: Formata o código de um serviço (Spotless)
+    vars: { SERVICE: "{{index .MATCH 0}}" }
+    dir: services/{{.SERVICE}}
+    cmds: ["{{.MVNW}} -B -q spotless:apply"]
+
+  run:*:
+    desc: Sobe um serviço fora do Docker (perfil local; o config-server precisa estar no ar)
+    vars: { SERVICE: "{{index .MATCH 0}}" }
+    dir: services/{{.SERVICE}}
+    cmds: ["{{.MVNW}} spring-boot:run -Dspring-boot.run.profiles=local"]
+
+  test:
+    desc: Testes rápidos de todos os serviços
+    cmds:
+      - for: { var: SERVICES }
+        task: test:{{.ITEM}}
+
+  verify:
+    desc: Build completo de todos os serviços (o mesmo que a CI roda)
+    cmds:
+      - for: { var: SERVICES }
+        task: verify:{{.ITEM}}
+
+  format:
+    desc: Formata todos os serviços
+    cmds:
+      - for: { var: SERVICES }
+        task: format:{{.ITEM}}
+
+  # --- Ambiente local (Docker) — executado apenas pelo usuário ------------------
+
+  setup:env:
+    desc: Gera infra/docker/.env com senhas aleatórias e define as variáveis do MCP (Windows)
+    platforms: [windows]
+    dir: infra/docker
+    cmds: ["powershell -ExecutionPolicy Bypass -File ./setup-local-env.ps1 {{.CLI_ARGS}}"]
+
+  infra:up:
+    desc: Sobe PostgreSQL e LocalStack
+    dir: infra/docker
+    cmds: ["{{.COMPOSE_INFRA}} up -d"]
+
+  infra:logs:
+    desc: Segue os logs da infraestrutura
+    dir: infra/docker
+    cmds: ["{{.COMPOSE_INFRA}} logs -f"]
+
+  infra:audit:
+    desc: Segue tudo o que o claude_mcp executa no PostgreSQL
+    dir: infra/docker
+    cmds: ["{{.COMPOSE_INFRA}} logs -f postgres"]
+
+  infra:down:
+    desc: Derruba a infraestrutura (mantém os dados)
+    dir: infra/docker
+    cmds: ["{{.COMPOSE_INFRA}} down"]
+
+  infra:reset:
+    desc: Derruba e APAGA o volume do PostgreSQL (reaplica os scripts de init)
+    prompt: Isso apaga todos os dados locais do PostgreSQL. Continuar?
+    dir: infra/docker
+    cmds: ["{{.COMPOSE_INFRA}} down -v"]
+
+  apps:up:
+    desc: Sobe infraestrutura e aplicações (rebuild das imagens)
+    dir: infra/docker
+    cmds: ["{{.COMPOSE_APPS}} up -d --build"]
+
+  apps:logs:
+    desc: Segue os logs de um serviço (ex. task apps:logs -- sales-service)
+    dir: infra/docker
+    cmds: ["{{.COMPOSE_APPS}} logs -f {{.CLI_ARGS}}"]
+
+  apps:down:
+    desc: Derruba infraestrutura e aplicações
+    dir: infra/docker
+    cmds: ["{{.COMPOSE_APPS}} down"]

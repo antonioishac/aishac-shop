@@ -1,0 +1,11 @@
+### Configuração que o customer-service recebe no perfil local
+GET {{configServer}}/customer-service/local
+
+### Configuração do sales-service no perfil dev (com o servidor no perfil git: version = hash do commit)
+GET {{configServer}}/sales-service/dev
+
+### Arquivo único resolvido (formato .properties)
+GET {{configServer}}/sales-service-local.properties
+
+### Readiness do Config Server
+GET {{configServer}}/actuator/health/readiness
