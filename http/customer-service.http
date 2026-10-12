@@ -1,21 +1,144 @@
 ### Readiness (usado pelo healthcheck do compose e pelas probes do Kubernetes)
 GET {{customerService}}/actuator/health/readiness
 
-### Liveness
-GET {{customerService}}/actuator/health/liveness
-
-### Contrato OpenAPI
+### Contrato OpenAPI (Swagger UI: {{customerService}}/swagger-ui/index.html nos perfis local e dev)
 GET {{customerService}}/v3/api-docs
 
-### Swagger UI (perfis local e dev) — abra no navegador
-GET {{customerService}}/swagger-ui/index.html
+# =====================================================================
+# Clientes (spec F01-020). Execute em ordem: os ids ficam em variáveis.
+# =====================================================================
 
-### ID de correlação: o mesmo valor volta no cabeçalho X-Correlation-Id e aparece nos logs
-GET {{customerService}}/api/v1/does-not-exist
+### Cadastrar cliente (CPF com pontuação, e-mail com maiúsculas: é normalizado)
+POST {{customerService}}/api/v1/customers
+Content-Type: application/json
 X-Correlation-Id: {{correlationId}}
 
-### Rota inexistente: 404 em ProblemDetail com code, correlationId e timestamp
-GET {{customerService}}/api/v1/does-not-exist
+{
+  "fullName": "Ana Souza",
+  "cpf": "529.982.247-25",
+  "email": "Ana@Example.com",
+  "phone": "11987654321"
+}
 
-### Versão de API não suportada: 400 em ProblemDetail
+> {% client.global.set("customerId", response.body.id); client.global.set("version", response.body.version); %}
+
+### Buscar por ID
+GET {{customerService}}/api/v1/customers/{{customerId}}
+
+### Listar: filtro "nome contém", paginado e ordenado por nome
+GET {{customerService}}/api/v1/customers?name=souza&page=0&size=20&sort=fullName,asc
+
+### Identificar no checkout por CPF ou por e-mail (exatos)
+GET {{customerService}}/api/v1/customers?cpf=52998224725
+
+###
+GET {{customerService}}/api/v1/customers?email=ANA@EXAMPLE.COM
+
+### Atualizar dados (exige a version lida; repetir com a mesma version dá 409 CONCURRENT_MODIFICATION)
+PUT {{customerService}}/api/v1/customers/{{customerId}}
+Content-Type: application/json
+
+{
+  "fullName": "Ana Souza Lima",
+  "email": "ana.lima@example.com",
+  "phone": null,
+  "version": {{version}}
+}
+
+### Bloquear
+POST {{customerService}}/api/v1/customers/{{customerId}}/block
+Content-Type: application/json
+
+{ "reason": "Suspeita de fraude" }
+
+### Desbloquear
+POST {{customerService}}/api/v1/customers/{{customerId}}/unblock
+
+# =====================================================================
+# Endereços
+# =====================================================================
+
+### Cadastrar endereço (o primeiro vira padrão)
+POST {{customerService}}/api/v1/customers/{{customerId}}/addresses
+Content-Type: application/json
+
+{
+  "label": "Casa",
+  "zipCode": "01310-100",
+  "street": "Avenida Paulista",
+  "number": "1000",
+  "complement": "Apto 42",
+  "district": "Bela Vista",
+  "city": "São Paulo",
+  "state": "SP"
+}
+
+> {% client.global.set("homeId", response.body.id); %}
+
+### Cadastrar segundo endereço
+POST {{customerService}}/api/v1/customers/{{customerId}}/addresses
+Content-Type: application/json
+
+{
+  "label": "Trabalho",
+  "zipCode": "20040-020",
+  "street": "Avenida Rio Branco",
+  "number": "S/N",
+  "district": "Centro",
+  "city": "Rio de Janeiro",
+  "state": "RJ"
+}
+
+> {% client.global.set("workId", response.body.id); %}
+
+### Listar endereços (padrão primeiro)
+GET {{customerService}}/api/v1/customers/{{customerId}}/addresses
+
+### Definir o segundo como padrão
+PUT {{customerService}}/api/v1/customers/{{customerId}}/addresses/{{workId}}/default
+
+### Atualizar endereço
+PUT {{customerService}}/api/v1/customers/{{customerId}}/addresses/{{homeId}}
+Content-Type: application/json
+
+{
+  "label": "Casa de praia",
+  "zipCode": "11010-000",
+  "street": "Avenida Ana Costa",
+  "number": "10",
+  "district": "Gonzaga",
+  "city": "Santos",
+  "state": "SP"
+}
+
+### Remover o padrão (o mais recente dos restantes assume)
+DELETE {{customerService}}/api/v1/customers/{{customerId}}/addresses/{{workId}}
+
+# =====================================================================
+# Dados para pedido (consumido pelo sales-service)
+# =====================================================================
+
+### Com o endereço padrão
+GET {{customerService}}/api/v1/customers/{{customerId}}/order-data
+
+### Com endereço escolhido
+GET {{customerService}}/api/v1/customers/{{customerId}}/order-data?addressId={{homeId}}
+
+# =====================================================================
+# Erros (ProblemDetail com code, correlationId e timestamp)
+# =====================================================================
+
+### CPF inválido: 400 INVALID_CPF
+POST {{customerService}}/api/v1/customers
+Content-Type: application/json
+
+{ "fullName": "Teste", "cpf": "529.982.247-24", "email": "teste@example.com" }
+
+### Desativar (INACTIVE é final; depois disso, alterações dão 422 CUSTOMER_INACTIVE)
+POST {{customerService}}/api/v1/customers/{{customerId}}/deactivate
+
+### Transição inválida: 409 INVALID_STATUS_TRANSITION
+POST {{customerService}}/api/v1/customers/{{customerId}}/unblock
+
+### Versão de API não suportada: 400
 GET {{customerService}}/api/v2/customers

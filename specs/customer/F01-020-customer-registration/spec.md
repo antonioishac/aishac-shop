@@ -194,7 +194,7 @@ Todos em ProblemDetail com `code`, `correlationId` e `timestamp` (ADR-008).
 
 ## 6. Modelo de dados
 
-> **Status:** proposto, aguardando o Portão 2. Banco `customers_db` (PostgreSQL 18), dono `customer_app`. Migrations: F01-021.
+> **Status:** aprovado em 2026-10-12 (Portão 2). Banco `customers_db` (PostgreSQL 18), dono `customer_app`. Migrations: F01-021.
 
 ### Visão geral
 

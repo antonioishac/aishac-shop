@@ -1,5 +1,8 @@
 package com.aishac.customer;
 
+import static com.tngtech.archunit.base.DescribedPredicate.not;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage;
+import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.name;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
@@ -59,13 +62,14 @@ class ArchitectureTest {
                 .that()
                 .resideInAPackage(BASE + "..domain..")
                 .should()
-                .dependOnClassesThat()
-                .resideInAnyPackage(
-                        "org.springframework..",
-                        "jakarta.persistence..",
-                        "tools.jackson..",
-                        "com.fasterxml.jackson..",
-                        "lombok..")
+                .dependOnClassesThat(resideInAnyPackage(
+                                "org.springframework..",
+                                "jakarta.persistence..",
+                                "tools.jackson..",
+                                "com.fasterxml.jackson..",
+                                "lombok..")
+                        // @Getter é permitido no domínio; lombok.config grava @lombok.Generated no bytecode.
+                        .and(not(name("lombok.Generated"))))
                 .allowEmptyShould(true)
                 .check(classes);
     }
