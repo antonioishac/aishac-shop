@@ -10,7 +10,8 @@ set -uo pipefail
 input=$(cat)
 
 # Evita laço infinito: se já estamos continuando por causa deste hook, não roda de novo.
-if [[ "$(jq -r '.stop_hook_active // false' <<<"$input")" == "true" ]]; then
+source "$(dirname "${BASH_SOURCE[0]}")/lib/json.sh"
+if [[ "$(json_get "$input" stop_hook_active)" == "true" ]]; then
   exit 0
 fi
 

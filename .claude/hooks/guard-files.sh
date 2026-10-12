@@ -6,7 +6,8 @@
 set -uo pipefail
 
 input=$(cat)
-file=$(jq -r '.tool_input.file_path // .tool_input.notebook_path // empty' <<<"$input")
+source "$(dirname "${BASH_SOURCE[0]}")/lib/json.sh"
+file=$(json_get "$input" tool_input.file_path tool_input.notebook_path) || { echo "Bloqueado: instale jq ou Python para os hooks validarem arquivos." >&2; exit 2; }
 [[ -z "$file" ]] && exit 0
 
 project_dir="${CLAUDE_PROJECT_DIR:-$(pwd)}"

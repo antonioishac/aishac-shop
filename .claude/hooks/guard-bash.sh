@@ -11,7 +11,8 @@
 set -uo pipefail
 
 input=$(cat)
-cmd=$(jq -r '.tool_input.command // empty' <<<"$input")
+source "$(dirname "${BASH_SOURCE[0]}")/lib/json.sh"
+cmd=$(json_get "$input" tool_input.command) || { echo "Bloqueado: instale jq ou Python para os hooks validarem comandos." >&2; exit 2; }
 [[ -z "$cmd" ]] && exit 0
 
 block() { echo "Bloqueado: $1" >&2; exit 2; }
@@ -33,6 +34,11 @@ while IFS= read -r seg; do
     git)
       if grep -Eq 'push' <<<"$seg" && grep -Eq '(--force|--force-with-lease|[[:space:]]-f([[:space:]]|$))' <<<"$seg"; then
         block "git push forçado é proibido."
+      fi ;;
+    task|make)
+      # Tarefas do Taskfile que executam Docker por dentro (infra:*, apps:*).
+      if grep -Eq '(^|[[:space:]])(infra|apps):' <<<"$seg"; then
+        block "'$first infra:*/apps:*' executa Docker. Informe o comando ao usuário (premissa P1)."
       fi ;;
   esac
 done <<<"$segments"
