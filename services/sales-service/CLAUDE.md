@@ -20,6 +20,15 @@ Cada módulo segue `domain/`, `application/`, `adapter/in/web/`, `adapter/out/..
 - `catalog` não conhece `order`. O ArchUnit garante isso.
 - Motivo: o catálogo poderá ser extraído para outro serviço no futuro (IF-010).
 
+## Infraestrutura transversal (`infrastructure/`)
+
+- `CorrelationIdFilter`: `X-Correlation-Id` (recebido ou gerado) no MDC e na resposta. `CorrelationIdPropagationInterceptor` o repassa em todo `RestClient` de saída.
+- `GlobalExceptionHandler`: todo erro em ProblemDetail com `code`, `correlationId`, `timestamp`.
+- `SensitiveDataMaskingCustomizer`: mascara CPF/e-mail em todo valor do log JSON (registrado no `config-repo`).
+- Versionamento nativo do Spring 7: mapeie `@RequestMapping("/api/{version}/...")` + `@GetMapping(version = "1")`.
+- `Clock` injetável; OpenAPI em `/v3/api-docs`.
+- Testes: `src/test/resources/application.properties` carrega os arquivos reais do `config-repo/` (perfil `local`), sem Config Server. `*IT` estendem `AbstractIntegrationTest` (PostgreSQL 18.4 via Testcontainers; exige Docker ativo).
+
 ## Regras do contexto
 
 - Preço e total sempre calculados aqui; o cliente envia só `productId` e `quantity`.

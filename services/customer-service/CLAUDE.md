@@ -14,6 +14,15 @@ com.aishac.customer/
 └── infrastructure/              # config, exception handler, OpenAPI, logging
 ```
 
+## Infraestrutura transversal (`infrastructure/`)
+
+- `CorrelationIdFilter`: `X-Correlation-Id` (recebido ou gerado) no MDC e na resposta.
+- `GlobalExceptionHandler`: todo erro em ProblemDetail com `code`, `correlationId`, `timestamp`.
+- `SensitiveDataMaskingCustomizer`: mascara CPF/e-mail em todo valor do log JSON (registrado no `config-repo`).
+- Versionamento nativo do Spring 7: mapeie `@RequestMapping("/api/{version}/...")` + `@GetMapping(version = "1")`.
+- `Clock` injetável; OpenAPI em `/v3/api-docs`.
+- Testes: `src/test/resources/application.properties` carrega os arquivos reais do `config-repo/` (perfil `local`), sem Config Server. `*IT` estendem `AbstractIntegrationTest` (PostgreSQL 18.4 via Testcontainers; exige Docker ativo).
+
 ## Regras do contexto
 
 - CPF é Value Object validado no domínio (dígitos verificadores); armazenado só com dígitos (`CHAR(11)`).

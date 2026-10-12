@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 E-commerce de estudo, construído de ponta a ponta como projeto de referência.
 Backlog e decisões: @docs/backlog/README.md
 
-**Estado atual:** marco 01.1 em andamento. Existem o Docker Compose (`infra/docker/`), o `config-server` e o `config-repo/`; os demais serviços e o frontend ainda não foram gerados (as pastas têm apenas `CLAUDE.md`). Projetos novos são gerados pelo Spring Initializr (Boot 4.1.x, Java 25), com Spotless (Palantir Java Format) e Failsafe no pom, porque o hook `on-stop` roda `spotless:apply`.
+**Estado atual:** marco 01.1 em andamento. Existem o Docker Compose (`infra/docker/`), o `config-server`, o `config-repo/` e o esqueleto do `customer-service` e do `sales-service` (só `infrastructure/`, sem features). `web-bff` e frontend ainda não foram gerados. Projetos novos são gerados pelo Spring Initializr (Boot 4.1.x, Java 25), com Spotless (Palantir Java Format) e Failsafe no pom, porque o hook `on-stop` roda `spotless:apply`.
 
 ## Onde estão as instruções
 
@@ -90,7 +90,7 @@ Prefira muitos unitários e poucos de integração. Testes de domínio não sobe
 - `./mvnw test -Dtest=CustomerTest` (ou `-Dtest='CustomerTest#shouldRejectInvalidCpf'`) → um teste unitário/de fatia
 - `./mvnw verify -Dit.test=CreateOrderIT` → um único `*IT` (Failsafe; os unitários também rodam)
 
-No Windows fora do Git Bash, use `mvnw.cmd`. Testes de integração com S3 precisam de `LOCALSTACK_AUTH_TOKEN` no ambiente.
+Os `*IT` usam Testcontainers e exigem o Docker Desktop ativo (o usuário liga; o Claude não executa `docker`). No Windows fora do Git Bash, use `mvnw.cmd`. Testes de integração com S3 precisam de `LOCALSTACK_AUTH_TOKEN` no ambiente.
 
 Frontend (`web/aishac-shop-web/`): `npm run test`, `npm run lint`, `npm run build`, `npm run generate:api` (regera o cliente a partir do OpenAPI do BFF; rode após mudar o contrato do BFF). Um teste: `npx vitest run src/features/store/cart`.
 
