@@ -1,0 +1,508 @@
+openapi: 3.1.0
+info:
+  title: Customer Service API — Cadastro de cliente (F01-020)
+  version: "1"
+  description: |
+    Clientes, status e endereços do Aishac Shop. Contrato da spec F01-020.
+    Erros em ProblemDetail (RFC 9457) com `code`, `correlationId` e `timestamp`.
+    Versão de API no caminho (`/api/v1`), resolvida pelo versionamento nativo do Spring 7.
+servers:
+  - url: http://localhost:8081
+    description: local
+tags:
+  - name: Customers
+    description: Cadastro e status do cliente
+  - name: Addresses
+    description: Endereços de entrega do cliente
+  - name: Order data
+    description: Dados do cliente consumidos pelo sales-service
+
+paths:
+  /api/v1/customers:
+    post:
+      tags: [Customers]
+      operationId: createCustomer
+      summary: Cadastrar cliente
+      description: Cria o cliente com status ACTIVE. CPF aceito com ou sem pontuação; e-mail normalizado para minúsculas.
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateCustomerRequest" }
+            examples:
+              ana:
+                value: { fullName: Ana Souza, cpf: 529.982.247-25, email: Ana@Example.com, phone: "11987654321" }
+      responses:
+        "201":
+          description: Cliente cadastrado
+          headers:
+            Location:
+              description: URL do cliente criado
+              schema: { type: string, format: uri, example: /api/v1/customers/0192f0c4-7d1e-7a3b-9c2d-4e5f6a7b8c9d }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    get:
+      tags: [Customers]
+      operationId: listCustomers
+      summary: Listar clientes
+      description: |
+        Lista paginada. Filtros combináveis: `name` (contém, sem diferenciar maiúsculas),
+        `email` e `cpf` (igualdade exata após normalização; usados pelo checkout) e `status`.
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - { name: name, in: query, required: false, schema: { type: string, maxLength: 150 }, description: Parte do nome }
+        - { name: email, in: query, required: false, schema: { type: string, maxLength: 254 }, description: E-mail exato (sem diferenciar maiúsculas) }
+        - { name: cpf, in: query, required: false, schema: { type: string, maxLength: 14 }, description: "CPF exato, com ou sem pontuação" }
+        - { name: status, in: query, required: false, schema: { $ref: "#/components/schemas/CustomerStatus" } }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - name: sort
+          in: query
+          required: false
+          description: "Campo e direção. Campos: fullName, createdAt. Padrão: createdAt,desc"
+          schema: { type: string, example: "fullName,asc" }
+      responses:
+        "200":
+          description: Página de clientes (vazia se nenhum corresponder)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerPage" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /api/v1/customers/{customerId}:
+    parameters:
+      - $ref: "#/components/parameters/CustomerId"
+      - $ref: "#/components/parameters/CorrelationId"
+    get:
+      tags: [Customers]
+      operationId: getCustomer
+      summary: Buscar cliente por ID
+      description: Funciona para qualquer status, inclusive INACTIVE.
+      responses:
+        "200":
+          description: Cliente
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Customers]
+      operationId: updateCustomer
+      summary: Atualizar dados do cliente
+      description: Substitui nome, e-mail e telefone. O CPF não muda. Exige a `version` lida (lock otimista).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateCustomerRequest" }
+      responses:
+        "200":
+          description: Cliente atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+
+  /api/v1/customers/{customerId}/block:
+    parameters:
+      - $ref: "#/components/parameters/CustomerId"
+      - $ref: "#/components/parameters/CorrelationId"
+    post:
+      tags: [Customers]
+      operationId: blockCustomer
+      summary: Bloquear cliente
+      description: ACTIVE → BLOCKED, com motivo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BlockCustomerRequest" }
+      responses:
+        "200":
+          description: Cliente bloqueado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/customers/{customerId}/unblock:
+    parameters:
+      - $ref: "#/components/parameters/CustomerId"
+      - $ref: "#/components/parameters/CorrelationId"
+    post:
+      tags: [Customers]
+      operationId: unblockCustomer
+      summary: Desbloquear cliente
+      description: BLOCKED → ACTIVE.
+      responses:
+        "200":
+          description: Cliente desbloqueado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/customers/{customerId}/deactivate:
+    parameters:
+      - $ref: "#/components/parameters/CustomerId"
+      - $ref: "#/components/parameters/CorrelationId"
+    post:
+      tags: [Customers]
+      operationId: deactivateCustomer
+      summary: Desativar cliente
+      description: ACTIVE ou BLOCKED → INACTIVE. Não existe exclusão de cliente (ADR-016).
+      responses:
+        "200":
+          description: Cliente desativado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/customers/{customerId}/addresses:
+    parameters:
+      - $ref: "#/components/parameters/CustomerId"
+      - $ref: "#/components/parameters/CorrelationId"
+    post:
+      tags: [Addresses]
+      operationId: addAddress
+      summary: Cadastrar endereço
+      description: O primeiro endereço do cliente vira padrão automaticamente. Máximo de 10 por cliente.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AddressRequest" }
+            examples:
+              casa:
+                value: { label: Casa, zipCode: "01310-100", street: Avenida Paulista, number: "1000", complement: Apto 42, district: Bela Vista, city: São Paulo, state: SP }
+      responses:
+        "201":
+          description: Endereço cadastrado
+          headers:
+            Location:
+              schema: { type: string, format: uri }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AddressResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+    get:
+      tags: [Addresses]
+      operationId: listAddresses
+      summary: Listar endereços do cliente
+      description: Até 10 itens, sem paginação; o padrão vem primeiro.
+      responses:
+        "200":
+          description: Endereços
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 10
+                items: { $ref: "#/components/schemas/AddressResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/customers/{customerId}/addresses/{addressId}:
+    parameters:
+      - $ref: "#/components/parameters/CustomerId"
+      - $ref: "#/components/parameters/AddressId"
+      - $ref: "#/components/parameters/CorrelationId"
+    put:
+      tags: [Addresses]
+      operationId: updateAddress
+      summary: Atualizar endereço
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AddressRequest" }
+      responses:
+        "200":
+          description: Endereço atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AddressResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+    delete:
+      tags: [Addresses]
+      operationId: removeAddress
+      summary: Remover endereço
+      description: Se for o padrão e houver outros, o cadastrado mais recentemente vira o padrão.
+      responses:
+        "204": { description: Endereço removido }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+
+  /api/v1/customers/{customerId}/addresses/{addressId}/default:
+    parameters:
+      - $ref: "#/components/parameters/CustomerId"
+      - $ref: "#/components/parameters/AddressId"
+      - $ref: "#/components/parameters/CorrelationId"
+    put:
+      tags: [Addresses]
+      operationId: setDefaultAddress
+      summary: Definir endereço padrão
+      description: Desmarca o padrão anterior na mesma operação. Idempotente.
+      responses:
+        "204": { description: Endereço definido como padrão }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+
+  /api/v1/customers/{customerId}/order-data:
+    parameters:
+      - $ref: "#/components/parameters/CustomerId"
+      - $ref: "#/components/parameters/CorrelationId"
+      - name: addressId
+        in: query
+        required: false
+        description: Endereço de entrega escolhido; se omitido, usa o padrão.
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Order data]
+      operationId: getOrderData
+      summary: Dados do cliente para criação de pedido
+      description: |
+        Consumido pelo sales-service (contrato produtor F01-025). Devolve o status real; a decisão de recusar
+        o pedido é do sales-service. `shippingAddress` é nulo se não houver `addressId` nem endereço padrão.
+      responses:
+        "200":
+          description: Dados para pedido
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrderDataResponse" }
+              examples:
+                ativo:
+                  value:
+                    customerId: 0192f0c4-7d1e-7a3b-9c2d-4e5f6a7b8c9d
+                    fullName: Ana Souza
+                    email: ana@example.com
+                    status: ACTIVE
+                    shippingAddress:
+                      id: 0192f0c5-1a2b-7c3d-8e4f-5a6b7c8d9e0f
+                      label: Casa
+                      zipCode: "01310100"
+                      street: Avenida Paulista
+                      number: "1000"
+                      complement: Apto 42
+                      district: Bela Vista
+                      city: São Paulo
+                      state: SP
+                      country: BR
+                      isDefault: true
+                semEndereco:
+                  value: { customerId: 0192f0c4-7d1e-7a3b-9c2d-4e5f6a7b8c9d, fullName: Ana Souza, email: ana@example.com, status: ACTIVE, shippingAddress: null }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+components:
+  parameters:
+    CustomerId:
+      name: customerId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AddressId:
+      name: addressId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: ID de correlação; gerado se ausente e devolvido na resposta.
+      schema: { type: string, pattern: "^[A-Za-z0-9-]{1,64}$" }
+    Page:
+      name: page
+      in: query
+      required: false
+      schema: { type: integer, minimum: 0, default: 0 }
+    Size:
+      name: size
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+
+  schemas:
+    CustomerStatus:
+      type: string
+      enum: [ACTIVE, BLOCKED, INACTIVE]
+
+    CreateCustomerRequest:
+      type: object
+      required: [fullName, cpf, email]
+      properties:
+        fullName: { type: string, minLength: 3, maxLength: 150 }
+        cpf: { type: string, description: "Com ou sem pontuação", pattern: "^\\d{3}\\.?\\d{3}\\.?\\d{3}-?\\d{2}$" }
+        email: { type: string, format: email, maxLength: 254 }
+        phone: { type: [string, "null"], description: "DDD + número, só dígitos (10 ou 11)", pattern: "^\\d{10,11}$" }
+
+    UpdateCustomerRequest:
+      type: object
+      required: [fullName, email, version]
+      properties:
+        fullName: { type: string, minLength: 3, maxLength: 150 }
+        email: { type: string, format: email, maxLength: 254 }
+        phone: { type: [string, "null"], pattern: "^\\d{10,11}$" }
+        version: { type: integer, format: int64, minimum: 0, description: Versão lida (lock otimista) }
+
+    BlockCustomerRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 3, maxLength: 255 }
+
+    CustomerResponse:
+      type: object
+      required: [id, fullName, cpf, email, status, version, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        fullName: { type: string }
+        cpf: { type: string, description: 11 dígitos, example: "52998224725" }
+        email: { type: string, format: email }
+        phone: { type: [string, "null"] }
+        status: { $ref: "#/components/schemas/CustomerStatus" }
+        blockReason: { type: [string, "null"] }
+        blockedAt: { type: [string, "null"], format: date-time }
+        deactivatedAt: { type: [string, "null"], format: date-time }
+        version: { type: integer, format: int64 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    CustomerPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: "#/components/schemas/CustomerResponse" }
+        page: { $ref: "#/components/schemas/PageMetadata" }
+
+    PageMetadata:
+      type: object
+      required: [number, size, totalElements, totalPages]
+      properties:
+        number: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+
+    AddressRequest:
+      type: object
+      required: [label, zipCode, street, number, district, city, state]
+      properties:
+        label: { type: string, minLength: 1, maxLength: 40 }
+        zipCode: { type: string, description: "CEP com ou sem hífen", pattern: "^\\d{5}-?\\d{3}$" }
+        street: { type: string, minLength: 1, maxLength: 150 }
+        number: { type: string, minLength: 1, maxLength: 10, description: "Aceita 'S/N'" }
+        complement: { type: [string, "null"], maxLength: 60 }
+        district: { type: string, minLength: 1, maxLength: 80 }
+        city: { type: string, minLength: 1, maxLength: 80 }
+        state: { $ref: "#/components/schemas/BrazilianState" }
+
+    AddressResponse:
+      type: object
+      required: [id, label, zipCode, street, number, district, city, state, country, isDefault]
+      properties:
+        id: { type: string, format: uuid }
+        label: { type: string }
+        zipCode: { type: string, description: 8 dígitos, example: "01310100" }
+        street: { type: string }
+        number: { type: string }
+        complement: { type: [string, "null"] }
+        district: { type: string }
+        city: { type: string }
+        state: { $ref: "#/components/schemas/BrazilianState" }
+        country: { type: string, const: BR }
+        isDefault: { type: boolean }
+
+    OrderDataResponse:
+      type: object
+      required: [customerId, fullName, email, status, shippingAddress]
+      properties:
+        customerId: { type: string, format: uuid }
+        fullName: { type: string }
+        email: { type: string, format: email }
+        status: { $ref: "#/components/schemas/CustomerStatus" }
+        shippingAddress:
+          oneOf:
+            - $ref: "#/components/schemas/AddressResponse"
+            - type: "null"
+
+    BrazilianState:
+      type: string
+      enum: [AC, AL, AP, AM, BA, CE, DF, ES, GO, MA, MT, MS, MG, PA, PB, PR, PE, PI, RJ, RN, RS, RO, RR, SC, SP, SE, TO]
+
+    ProblemDetail:
+      type: object
+      description: RFC 9457 com extensões do projeto (ADR-008)
+      required: [status, title, code, correlationId, timestamp]
+      properties:
+        type: { type: string, format: uri, default: about:blank }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string, format: uri }
+        code: { type: string, example: CUSTOMER_NOT_FOUND }
+        correlationId: { type: string }
+        timestamp: { type: string, format: date-time }
+        errors:
+          type: array
+          description: Só em VALIDATION_ERROR
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field: { type: string }
+              message: { type: string }
+
+  responses:
+    BadRequest:
+      description: "VALIDATION_ERROR ou INVALID_CPF"
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ProblemDetail" }
+          examples:
+            validation:
+              value: { type: about:blank, title: Bad Request, status: 400, detail: Request has invalid fields., code: VALIDATION_ERROR, correlationId: 3f1c2a9e-0b7d-4c55-9a1e-2d3f4b5c6d7e, timestamp: "2026-10-12T15:00:00Z", errors: [{ field: email, message: must be a well-formed email address }] }
+            invalidCpf:
+              value: { type: about:blank, title: Bad Request, status: 400, detail: CPF is invalid., code: INVALID_CPF, correlationId: 3f1c2a9e-0b7d-4c55-9a1e-2d3f4b5c6d7e, timestamp: "2026-10-12T15:00:00Z" }
+    NotFound:
+      description: "CUSTOMER_NOT_FOUND ou ADDRESS_NOT_FOUND"
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ProblemDetail" }
+          examples:
+            customer:
+              value: { type: about:blank, title: Not Found, status: 404, detail: Customer not found., code: CUSTOMER_NOT_FOUND, correlationId: 3f1c2a9e-0b7d-4c55-9a1e-2d3f4b5c6d7e, timestamp: "2026-10-12T15:00:00Z" }
+    Conflict:
+      description: "CPF_ALREADY_EXISTS, EMAIL_ALREADY_EXISTS, INVALID_STATUS_TRANSITION ou CONCURRENT_MODIFICATION"
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ProblemDetail" }
+          examples:
+            cpf:
+              value: { type: about:blank, title: Conflict, status: 409, detail: CPF is already registered., code: CPF_ALREADY_EXISTS, correlationId: 3f1c2a9e-0b7d-4c55-9a1e-2d3f4b5c6d7e, timestamp: "2026-10-12T15:00:00Z" }
+    Unprocessable:
+      description: "CUSTOMER_INACTIVE ou ADDRESS_LIMIT_EXCEEDED"
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ProblemDetail" }
+          examples:
+            inactive:
+              value: { type: about:blank, title: Unprocessable Entity, status: 422, detail: Customer is inactive and cannot be changed., code: CUSTOMER_INACTIVE, correlationId: 3f1c2a9e-0b7d-4c55-9a1e-2d3f4b5c6d7e, timestamp: "2026-10-12T15:00:00Z" }
