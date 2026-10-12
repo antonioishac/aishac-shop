@@ -102,3 +102,6 @@ Frontend (`web/aishac-shop-web/`): `npm run test`, `npm run lint`, `npm run buil
 ## Commits
 
 Conventional Commits (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`), com escopo do serviço: `feat(sales): ...`. Detalhes na rule `git-commits`.
+Branches, PRs, versionamento e release por serviço: `CONTRIBUTING.md`. Toda mudança de serviço entra no `CHANGELOG.md` dele, em `[Unreleased]`.
+
+Atalhos: `Taskfile.yml` (`task --list`). Tarefas `infra:*`/`apps:*` executam Docker e são só do usuário.

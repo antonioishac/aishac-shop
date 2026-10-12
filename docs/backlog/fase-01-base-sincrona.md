@@ -39,7 +39,7 @@
 | F01-013 | TEC | **Gates de qualidade**: ArchUnit (fronteiras de camada e entre módulos), JaCoCo (cobertura mínima), Spotless, varredura de dependências vulneráveis e de segredos; separação `*Test` / `*IT` | Claude | ✅ |
 | F01-014 | TEC | **CI** (GitHub Actions): workflow por serviço e frontend com filtro de caminho; build, testes (incluindo Testcontainers) e gates | Claude | ✅ |
 | F01-015 | TEC | **Experiência de desenvolvimento**: `Makefile`/Taskfile com comandos (sem executar Docker pelo Claude), coleção de requisições `.http` versionada | Claude | ✅ |
-| F01-016 | TEC | Git: estratégia de branches, template de PR, Conventional Commits, CHANGELOG, versionamento semântico por serviço | Claude | ⬜ |
+| F01-016 | TEC | Git: estratégia de branches, template de PR, Conventional Commits, CHANGELOG, versionamento semântico por serviço | Claude | ✅ |
 | F01-017 | DOC | `docs/evolucao/01-base-sincrona/`: `adr/`, `limitacoes.md` (**modelo vazio**) | Claude | ✅ |
 | F01-018 | ESTUDO | Criar conta LocalStack (plano Hobby) e configurar `LOCALSTACK_AUTH_TOKEN` no seu ambiente | Você | ⬜ |
 | F01-019 | ESTUDO | Subir a infraestrutura local pela primeira vez e validar acesso aos bancos com os usuários de cada serviço | Você | ⬜ |
