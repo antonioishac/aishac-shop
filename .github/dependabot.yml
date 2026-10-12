@@ -1,0 +1,39 @@
+# Atualizações de dependências por PR, agrupadas para não inundar o repositório.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directories:
+      - /services/config-server
+      - /services/customer-service
+      - /services/sales-service
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      spring:
+        patterns: ["org.springframework*"]
+      test:
+        patterns: ["org.testcontainers*", "com.tngtech.archunit*", "org.jacoco*"]
+    commit-message:
+      prefix: build
+      include: scope
+
+  - package-ecosystem: docker
+    directories:
+      - /services/config-server
+      - /services/customer-service
+      - /services/sales-service
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: build
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: ci

@@ -1,0 +1,54 @@
+# Varreduras de segurança do repositório inteiro:
+# - Gitleaks: segredos versionados (em todo o histórico).
+# - OSV-Scanner: dependências com vulnerabilidade conhecida (Maven, e npm quando o frontend existir).
+#   Em PR, reprova só vulnerabilidades novas em relação à base; semanalmente, varre tudo.
+name: security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependencies-pr:
+    name: osv-scanner (PR)
+    if: github.event_name == 'pull_request'
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@v2.7.0
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+  dependencies-full:
+    name: osv-scanner
+    if: github.event_name != 'pull_request'
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.7.0
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
