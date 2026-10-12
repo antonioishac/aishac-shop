@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "pg-customers-read": {
+      "command": "uvx",
+      "args": ["postgres-mcp", "--access-mode=restricted"],
+      "env": { "DATABASE_URI": "${CLAUDE_PG_CUSTOMERS_URL}" }
+    },
+    "pg-customers-write": {
+      "command": "uvx",
+      "args": ["postgres-mcp", "--access-mode=unrestricted"],
+      "env": { "DATABASE_URI": "${CLAUDE_PG_CUSTOMERS_URL}" }
+    },
+    "pg-sales-read": {
+      "command": "uvx",
+      "args": ["postgres-mcp", "--access-mode=restricted"],
+      "env": { "DATABASE_URI": "${CLAUDE_PG_SALES_URL}" }
+    },
+    "pg-sales-write": {
+      "command": "uvx",
+      "args": ["postgres-mcp", "--access-mode=unrestricted"],
+      "env": { "DATABASE_URI": "${CLAUDE_PG_SALES_URL}" }
+    }
+  }
+}

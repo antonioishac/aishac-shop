@@ -1,0 +1,32 @@
+# Segredos e configuração pessoal
+.env
+.env.*
+!.env.example
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Java / Maven
+target/
+*.class
+*.log
+.mvn/wrapper/maven-wrapper.jar
+
+# Node
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# IDEs e SO
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Terraform (trilha cloud)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
