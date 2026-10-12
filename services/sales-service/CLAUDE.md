@@ -1,33 +1,28 @@
 # sales-service
 
-Dono dos contextos **Catálogo**, **Pedido** e **Pagamento**. Banco `sales_db` (usuário `sales_app`).
+Dono dos contextos **Catálogo**, **Pedido** e **Pagamento**. Banco `aishac_sales` (usuário `sales_app`).
 
-## Pacotes
+## Pacotes (camadas por tipo, ADR-025)
 
 ```text
 com.aishac.sales/
-├── catalog/    # categorias, produtos, estoque, imagens (S3)
-├── order/      # pedido (agregado raiz), itens, máquina de estados, histórico
-├── payment/    # Strategy: PixPayment, CardPayment, BoletoPayment (simulados)
-└── infrastructure/
+├── config/      # Clock, auditoria JPA, OpenAPI, correlação (entrada e RestClient de saída), máscara de logs
+└── exception/   # ErrorCode, CommonErrorCode, GlobalExceptionHandler
 ```
 
-Cada módulo segue `domain/`, `application/`, `adapter/in/web/`, `adapter/out/...`.
+As demais camadas (`controller`, `dto`, `entity`, `mapper`, `repository`, `service`, `specification`) nascem com as features, como no `customer-service`.
 
-## Fronteiras entre módulos
+## Módulos (catálogo, pedido, pagamento)
 
-- `order` usa o catálogo **apenas por um port** do próprio `order` (ex.: `ProductCatalogPort`); nunca importa classes de `catalog.domain` ou `catalog.adapter`.
-- `catalog` não conhece `order`. O ArchUnit garante isso.
-- Motivo: o catálogo poderá ser extraído para outro serviço no futuro (IF-010).
+- **Em aberto:** como os módulos `catalog`, `order` e `payment` se organizam dentro das camadas será decidido na spec F01-030 (ADR-025).
+- Até lá: `catalog` não depende de `order` nem de `payment`, e não há FK entre tabelas de módulos diferentes (o catálogo poderá ser extraído, IF-010).
 
-## Infraestrutura transversal (`infrastructure/`)
+## Transversal
 
-- `CorrelationIdFilter`: `X-Correlation-Id` (recebido ou gerado) no MDC e na resposta. `CorrelationIdPropagationInterceptor` o repassa em todo `RestClient` de saída.
+- `CorrelationIdFilter` e `CorrelationIdPropagationInterceptor` (repassa o ID em todo `RestClient` de saída).
 - `GlobalExceptionHandler`: todo erro em ProblemDetail com `code`, `correlationId`, `timestamp`.
-- `SensitiveDataMaskingCustomizer`: mascara CPF/e-mail em todo valor do log JSON (registrado no `config-repo`).
-- Versionamento nativo do Spring 7: mapeie `@RequestMapping("/api/{version}/...")` + `@GetMapping(version = "1")`.
-- `Clock` injetável; OpenAPI em `/v3/api-docs`.
-- Testes: `src/test/resources/application.properties` carrega os arquivos reais do `config-repo/` (perfil `local`), sem Config Server. `*IT` estendem `AbstractIntegrationTest` (PostgreSQL 18.4 via Testcontainers; exige Docker ativo).
+- Rotas com versão fixa: `@RequestMapping("/api/v1/...")`. Paginação com `Pageable` + `PageResponse`.
+- Testes: `src/test/resources/application.properties` carrega os arquivos reais do `config-repo/` (perfil `local`). `*IT` estendem `AbstractIntegrationTest` (Testcontainers; exige Docker ativo).
 
 ## Regras do contexto
 

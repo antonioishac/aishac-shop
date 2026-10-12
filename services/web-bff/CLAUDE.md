@@ -6,11 +6,17 @@ Backend for Frontend do `aishac-shop-web`. **Sem banco de dados e sem estado.** 
 
 ```text
 com.aishac.bff/
-├── store/          # endpoints /api/v1/store/** (loja)
-├── admin/          # endpoints /api/v1/admin/** (painel)
-├── client/         # HTTP Interfaces para customer-service e sales-service + Resilience4j
-└── infrastructure/
+├── config/        # Clock, OpenAPI, correlação, Resilience4j
+├── controller/    # store/** (loja) e admin/** (painel): sem regra de negócio
+├── client/        # HTTP Interfaces para customer-service e sales-service
+├── dto/           # DTOs por tela (Records)
+├── exception/     # ErrorCode, GlobalExceptionHandler
+├── mapper/        # MapStruct: respostas dos serviços → DTOs de tela
+└── service/       # composição/agregação (StructuredTaskScope) e degradação parcial
+    └── impl/
 ```
+
+Camadas por tipo, como nos demais serviços (ADR-025). Esqueleto no F01-052.
 
 ## Regras
 

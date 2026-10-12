@@ -16,6 +16,3 @@ X-Correlation-Id: {{correlationId}}
 
 ### Rota inexistente: 404 em ProblemDetail com code, correlationId e timestamp
 GET {{salesService}}/api/v1/does-not-exist
-
-### Versão de API não suportada: 400 em ProblemDetail
-GET {{salesService}}/api/v2/orders

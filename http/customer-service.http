@@ -139,6 +139,3 @@ POST {{customerService}}/api/v1/customers/{{customerId}}/deactivate
 
 ### Transição inválida: 409 INVALID_STATUS_TRANSITION
 POST {{customerService}}/api/v1/customers/{{customerId}}/unblock
-
-### Versão de API não suportada: 400
-GET {{customerService}}/api/v2/customers

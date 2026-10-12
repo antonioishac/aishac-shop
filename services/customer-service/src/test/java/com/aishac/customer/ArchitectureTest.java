@@ -1,8 +1,5 @@
 package com.aishac.customer;
 
-import static com.tngtech.archunit.base.DescribedPredicate.not;
-import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage;
-import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.name;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
@@ -10,17 +7,14 @@ import static com.tngtech.archunit.library.GeneralCodingRules.NO_CLASSES_SHOULD_
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.repository.Repository;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Regras da rule architecture-boundaries. Regras de camada aceitam pacotes ainda vazios: passam a valer
- * assim que a primeira feature criar domain/application/adapter.
- */
+/** Camadas por tipo (ADR-025): controller → service → repository, com dto, entity, mapper e exception de apoio. */
 class ArchitectureTest {
 
     private static final String BASE = "com.aishac.customer";
@@ -35,61 +29,64 @@ class ArchitectureTest {
     }
 
     @Test
-    void layersShouldRespectHexagonalDirection() {
+    void layersShouldOnlyBeAccessedFromAbove() {
         layeredArchitecture()
                 .consideringOnlyDependenciesInLayers()
                 .withOptionalLayers(true)
-                .layer("Domain")
-                .definedBy(BASE + "..domain..")
-                .layer("Application")
-                .definedBy(BASE + "..application..")
-                .layer("Adapter")
-                .definedBy(BASE + "..adapter..")
-                .layer("Infrastructure")
-                .definedBy(BASE + ".infrastructure..")
-                .whereLayer("Adapter")
+                .layer("Controller")
+                .definedBy(BASE + ".controller..")
+                .layer("Service")
+                .definedBy(BASE + ".service..")
+                .layer("Repository")
+                .definedBy(BASE + ".repository..")
+                .layer("Specification")
+                .definedBy(BASE + ".specification..")
+                .layer("Mapper")
+                .definedBy(BASE + ".mapper..")
+                .whereLayer("Controller")
                 .mayNotBeAccessedByAnyLayer()
-                .whereLayer("Application")
-                .mayOnlyBeAccessedByLayers("Adapter", "Infrastructure")
-                .whereLayer("Domain")
-                .mayOnlyBeAccessedByLayers("Application", "Adapter", "Infrastructure")
+                .whereLayer("Service")
+                .mayOnlyBeAccessedByLayers("Controller")
+                .whereLayer("Repository")
+                .mayOnlyBeAccessedByLayers("Service")
+                .whereLayer("Specification")
+                .mayOnlyBeAccessedByLayers("Service")
+                .whereLayer("Mapper")
+                .mayOnlyBeAccessedByLayers("Service")
                 .check(classes);
     }
 
     @Test
-    void domainShouldNotDependOnFrameworks() {
+    void entitiesAndDtosShouldNotDependOnUpperLayers() {
         noClasses()
                 .that()
-                .resideInAPackage(BASE + "..domain..")
+                .resideInAnyPackage(BASE + ".entity..", BASE + ".dto..")
                 .should()
-                .dependOnClassesThat(resideInAnyPackage(
-                                "org.springframework..",
-                                "jakarta.persistence..",
-                                "tools.jackson..",
-                                "com.fasterxml.jackson..",
-                                "lombok..")
-                        // @Getter é permitido no domínio; lombok.config grava @lombok.Generated no bytecode.
-                        .and(not(name("lombok.Generated"))))
+                .dependOnClassesThat()
+                .resideInAnyPackage(
+                        BASE + ".controller..", BASE + ".service..", BASE + ".repository..", BASE + ".mapper..")
                 .allowEmptyShould(true)
                 .check(classes);
     }
 
     @Test
-    void inboundAndOutboundAdaptersShouldNotDependOnEachOther() {
-        noClasses()
+    void controllersShouldLiveInControllerPackage() {
+        classes()
                 .that()
-                .resideInAPackage(BASE + "..adapter.in..")
+                .areAnnotatedWith(RestController.class)
                 .should()
-                .dependOnClassesThat()
-                .resideInAPackage(BASE + "..adapter.out..")
+                .resideInAPackage(BASE + ".controller..")
                 .allowEmptyShould(true)
                 .check(classes);
-        noClasses()
+    }
+
+    @Test
+    void serviceImplementationsShouldBeHiddenBehindTheirInterfaces() {
+        classes()
                 .that()
-                .resideInAPackage(BASE + "..adapter.out..")
+                .resideInAPackage(BASE + ".service.impl..")
                 .should()
-                .dependOnClassesThat()
-                .resideInAPackage(BASE + "..adapter.in..")
+                .notHaveModifier(JavaModifier.PUBLIC)
                 .allowEmptyShould(true)
                 .check(classes);
     }
@@ -100,34 +97,7 @@ class ArchitectureTest {
     }
 
     @Test
-    void controllersShouldNotAccessRepositories() {
-        noClasses()
-                .that()
-                .areAnnotatedWith(RestController.class)
-                .should()
-                .dependOnClassesThat()
-                .areAssignableTo(Repository.class)
-                .allowEmptyShould(true)
-                .check(classes);
-    }
-
-    @Test
-    void featurePackagesShouldBeFreeOfCycles() {
-        slices().matching(BASE + ".(*)..")
-                .should()
-                .beFreeOfCycles()
-                .allowEmptyShould(true)
-                .check(classes);
-    }
-
-    @Test
-    void controllersShouldLiveInInboundWebAdapters() {
-        classes()
-                .that()
-                .areAnnotatedWith(RestController.class)
-                .should()
-                .resideInAPackage(BASE + "..adapter.in.web..")
-                .allowEmptyShould(true)
-                .check(classes);
+    void packagesShouldBeFreeOfCycles() {
+        slices().matching(BASE + ".(*)..").should().beFreeOfCycles().check(classes);
     }
 }

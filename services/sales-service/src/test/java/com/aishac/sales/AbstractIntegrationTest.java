@@ -6,8 +6,8 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
- * Base dos testes de integração: um único PostgreSQL (mesma versão do compose) compartilhado por todas as
- * classes, iniciado uma vez e reaproveitado junto com o contexto Spring em cache.
+ * Base dos testes de integração: um único PostgreSQL (mesma versão do compose) compartilhado por todas as classes,
+ * iniciado uma vez e reaproveitado junto com o contexto Spring em cache.
  */
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 public abstract class AbstractIntegrationTest {
