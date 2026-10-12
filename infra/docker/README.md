@@ -13,10 +13,23 @@
 
 ## 1. Preparar o `.env`
 
+**Atalho (Windows/PowerShell):** gera o `.env` com senhas aleatórias e define as variáveis do MCP (seção 6), sem exibir nenhuma senha:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\setup-local-env.ps1                    # porta 5432
+powershell -ExecutionPolicy Bypass -File .\setup-local-env.ps1 -PostgresPort 5433 # se a 5432 já estiver ocupada
+```
+
+Depois, preencha só o `LOCALSTACK_AUTH_TOKEN` no `.env` (F01-018). Sem ele, o postgres sobe normalmente e o LocalStack não inicia.
+
+**Manual:**
+
 ```bash
 cp .env.example .env
 # edite .env: senhas dos três usuários do banco, do superusuário e o LOCALSTACK_AUTH_TOKEN
 ```
+
+> **Porta diferente de 5432?** Os serviços rodando fora do Docker (IDE, `./mvnw spring-boot:run`) precisam de `DB_PORT` com a mesma porta. Dentro do compose nada muda: os containers falam com `postgres:5432` pela rede interna.
 
 ## 2. Infraestrutura (PostgreSQL + LocalStack)
 

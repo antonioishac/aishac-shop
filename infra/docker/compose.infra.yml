@@ -39,10 +39,11 @@ services:
 
   localstack:
     # Imagem única desde a 2026.03: exige LOCALSTACK_AUTH_TOKEN (plano Hobby).
+    # Opcional no compose para permitir subir só o postgres; sem token, o LocalStack não inicia.
     image: localstack/localstack:2026.03.0
     container_name: aishac-localstack
     environment:
-      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:?defina LOCALSTACK_AUTH_TOKEN no .env}
+      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:-}
       SERVICES: s3
       AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
       PRODUCT_IMAGES_BUCKET: ${PRODUCT_IMAGES_BUCKET:-aishac-product-images-local}
