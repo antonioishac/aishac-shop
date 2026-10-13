@@ -5,7 +5,7 @@
 | Status | Aceita |
 | Data | 2026-10-12 |
 | Fase | 01-base-sincrona |
-| Origem | D09 · F01-012 · F01-026 · F01-039 |
+| Origem | D09 · F01-012 · F01-020 · F01-026 · F01-039 |
 
 ## Contexto
 Clientes da API (BFF, frontend, outro serviço) precisam distinguir erros de forma estável, sem interpretar mensagens em texto. Cada framework e cada serviço tende a inventar o próprio formato.
@@ -17,6 +17,23 @@ Toda resposta de erro usa **`application/problem+json` (RFC 9457)**, com três p
 - `timestamp`: vindo do `Clock`.
 
 Erros de validação trazem `errors[]` com campo e mensagem. Erro inesperado vira `500 INTERNAL_ERROR` **sem detalhes internos** (sem stack trace nem mensagem da exceção). O `GlobalExceptionHandler`, que estende `ResponseEntityExceptionHandler`, é a implementação base de cada serviço; os códigos de domínio entram nos catálogos de erro de cada serviço (F01-026, F01-039).
+
+Cada serviço tem a interface `ErrorCode` (código, mensagem padrão e status HTTP), o catálogo transversal `CommonErrorCode` e um catálogo por contexto (ex.: `CustomerErrorCode`). Códigos transversais:
+
+| Código | Status | Quando |
+|---|---|---|
+| `VALIDATION_ERROR` | 400 | Bean Validation, parâmetro de tipo inválido, `sort` inexistente ou valor rejeitado só pelo CHECK do banco (com o campo da API, nunca o nome da constraint) |
+| `MALFORMED_REQUEST` | 400 | Corpo JSON ilegível |
+| `ROUTE_NOT_FOUND` | 404 | Rota inexistente |
+| `METHOD_NOT_ALLOWED` | 405 | Verbo não suportado pela rota |
+| `CONCURRENT_MODIFICATION` | 409 | Lock otimista ou pessimista em conflito |
+| `DATA_INTEGRITY_VIOLATION` | 409 | Outra violação de integridade não traduzida pelo service |
+| `INTERNAL_ERROR` | 500 | Qualquer erro inesperado |
+| `SERVICE_UNAVAILABLE` | 503 | Dependência obrigatória indisponível (ex.: banco fora do ar ou sem conexão) |
+
+Referência viva: `customer-service`. O `CommonErrorCode` do `sales-service` ainda não tem `SERVICE_UNAVAILABLE` (nem o tratamento de banco indisponível); deve ganhá-lo junto com suas primeiras features.
+
+Erros 4xx são logados em WARN com mensagem segura (sem o valor rejeitado); 5xx em ERROR com stack trace, que nunca vai na resposta.
 
 ## Alternativas consideradas
 | Alternativa | Prós | Contras |

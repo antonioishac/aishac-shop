@@ -7,7 +7,7 @@ Dono do contexto **Clientes**: cadastro, status e endereços. Banco `aishac_cust
 ```text
 com.aishac.customer/
 ├── config/          # Clock, auditoria JPA, OpenAPI, CorrelationIdFilter, máscara de logs
-├── controller/      # CustomerController, CustomerAddressController (sem regra de negócio)
+├── controller/      # CustomerController, CustomerAddressController, CustomerOrderDataController (sem regra de negócio)
 ├── dto/             # Records de request/response, PageResponse
 ├── entity/          # BaseEntity, Customer, CustomerAddress, CustomerStatus
 ├── exception/       # ErrorCode, CommonErrorCode, CustomerErrorCode, GlobalExceptionHandler

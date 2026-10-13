@@ -14,7 +14,7 @@ Cadastro de clientes no customer-service, em **camadas por tipo** (ADR-025). O c
 | mapper | `CustomerMapper` (MapStruct) | criar |
 | service | `CustomerService`, `CustomerAddressService`, `CpfValidator`, `CustomerRules`; `impl/CustomerServiceImpl`, `impl/CustomerAddressServiceImpl` | criar |
 | dto | `CustomerRequest`, `CustomerUpdateRequest`, `BlockCustomerRequest`, `CustomerResponse`, `AddressRequest`, `AddressResponse`, `OrderDataResponse`, `PageResponse` | criar |
-| controller | `CustomerController` (inclui `order-data`), `CustomerAddressController` | criar |
+| controller | `CustomerController`, `CustomerAddressController`, `CustomerOrderDataController` (`order-data`, tag própria do contrato) | criar |
 | exception | `ErrorCode`, `CommonErrorCode`, `CustomerErrorCode`, `BusinessException`, `NotFoundException`, `ProblemDetailFactory`, `GlobalExceptionHandler` | criar |
 | config | `ClockConfiguration` (precisão de µs), `JpaAuditingConfiguration`, `OpenApiConfiguration` (cabeçalho de correlação), `CorrelationIdFilter`, máscara de logs | criar |
 | resources/db/migration | `V1__create_customers.sql`, `V2__create_customer_addresses.sql` | criar |

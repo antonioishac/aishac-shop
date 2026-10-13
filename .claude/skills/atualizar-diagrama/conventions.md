@@ -10,10 +10,11 @@
 7. Sequência — Detalhe do Pedido (agregação e degradação)
 8. Sequência — Imagens (inserir, substituir, excluir)
 9. Máquina de estados — Pedido
-10. Deployment — Local (Docker Compose)
-11. Deployment — Kubernetes (alvo)
-12. ER — aishac_customer
-13. ER — aishac_sales
+10. Máquina de estados — Cliente
+11. Deployment — Local (Docker Compose)
+12. Deployment — Kubernetes (alvo)
+13. ER — aishac_customer
+14. ER — aishac_sales
 
 ## Cores (preenchimento)
 | Elemento | Cor |

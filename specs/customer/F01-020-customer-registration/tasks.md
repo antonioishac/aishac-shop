@@ -38,5 +38,5 @@ Também cobrem a feature: `ArchitectureTest` (camadas), `GlobalExceptionHandlerT
 - [x] `./mvnw verify` verde
 - [x] Coleção `.http` atualizada
 - [x] Revisão `code-reviewer`: APROVADO (2026-10-13, após duas rodadas de correção)
-- [ ] Diagrama/ADR atualizados (ADR-025 feito; páginas de componentes do diagrama pendentes)
-- [ ] Item marcado ✅ no backlog
+- [x] Diagrama/ADR atualizados (ADR-025; páginas Componentes — customer-service, ER — aishac_customer e Máquina de estados — Cliente; ADR-008 e ADR-016 alinhados ao código)
+- [x] Item marcado ✅ no backlog (F01-025, contrato produtor, segue como item próprio)
