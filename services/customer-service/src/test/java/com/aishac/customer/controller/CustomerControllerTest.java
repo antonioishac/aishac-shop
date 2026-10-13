@@ -26,7 +26,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /** Fatia web: validação de entrada (CA-05, CA-19) e tradução das exceções em ProblemDetail, sem banco. */
-@WebMvcTest({CustomerController.class, CustomerAddressController.class})
+@WebMvcTest({CustomerController.class, CustomerAddressController.class, CustomerOrderDataController.class})
 @Import({GlobalExceptionHandler.class, ClockConfiguration.class})
 class CustomerControllerTest {
 
@@ -79,7 +79,7 @@ class CustomerControllerTest {
     void shouldRejectMalformedIdsUnknownStatusAndMalformedBody() throws Exception {
         mvc.perform(get("/api/v1/customers/not-a-uuid"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors[0].field").value("id"));
+                .andExpect(jsonPath("$.errors[0].field").value("customerId"));
         mvc.perform(get("/api/v1/customers?status=SLEEPING"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));

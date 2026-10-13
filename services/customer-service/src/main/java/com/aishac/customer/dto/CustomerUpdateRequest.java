@@ -9,6 +9,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 /** Atualização de nome, e-mail e telefone. O CPF não muda. {@code version} é a lida antes (lock otimista). */
+@Schema(name = "UpdateCustomerRequest")
 public record CustomerUpdateRequest(
         @NotBlank @Size(min = 3, max = 150) String fullName,
 

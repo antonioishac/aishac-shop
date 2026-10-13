@@ -12,20 +12,20 @@
 | CA-07 | `CustomerApiIT.shouldFilterSortAndPaginate` | integração | ✅ |
 | CA-08 | `CustomerApiIT.shouldFindCustomerByCpfOrEmailForCheckout` | integração | ✅ |
 | CA-09 | `CustomerServiceImplTest.shouldUpdateDetailsKeepingCpf`, `CustomerApiIT.shouldUpdateCustomerAndRejectStaleVersionWithoutChanges` | unitário, integração | ✅ |
-| CA-10 | `CustomerServiceImplTest.shouldRejectStaleVersionInactiveCustomerAndEmailOfAnotherCustomer`, `CustomerApiIT.shouldUpdateCustomerAndRejectStaleVersionWithoutChanges` | unitário, integração | ✅ |
+| CA-10 | `CustomerServiceImplTest.shouldRejectStaleVersionInactiveCustomerAndEmailOfAnotherCustomer`, `CustomerApiIT.shouldUpdateCustomerAndRejectStaleVersionWithoutChanges`, `CustomerApiIT.shouldRejectUpdateWithVersionReadBeforeAnAddressChange` | unitário, integração | ✅ |
 | CA-11 | `CustomerServiceImplTest.shouldBlockUnblockAndDeactivateWithTimestamps`, `CustomerApiIT.shouldWalkThroughStatusLifecycleAndFreezeInactiveCustomer` | unitário, integração | ✅ |
 | CA-12 | `CustomerServiceImplTest.shouldBlockUnblockAndDeactivateWithTimestamps`, `CustomerApiIT.shouldWalkThroughStatusLifecycleAndFreezeInactiveCustomer` | unitário, integração | ✅ |
 | CA-13 | `CustomerServiceImplTest.shouldRejectInvalidStatusTransitions`, `CustomerApiIT.shouldWalkThroughStatusLifecycleAndFreezeInactiveCustomer` | unitário, integração | ✅ |
 | CA-14 | `CustomerAddressServiceImplTest.shouldRejectAddressChangesWhenCustomerIsInactive`, `CustomerApiIT.shouldWalkThroughStatusLifecycleAndFreezeInactiveCustomer` | unitário, integração | ✅ |
 | CA-15 | `CustomerAddressServiceImplTest.shouldMakeOnlyTheFirstAddressDefault`, `CustomerApiIT.shouldManageAddressesKeepingSingleDefault` | unitário, integração | ✅ |
-| CA-16 | `CustomerAddressServiceImplTest.shouldKeepASingleDefaultWhenSwitching`, `CustomerApiIT.shouldManageAddressesKeepingSingleDefault` | unitário, integração | ✅ |
+| CA-16 | `CustomerAddressServiceImplTest.shouldKeepASingleDefaultWhenSwitching`, `CustomerApiIT.shouldManageAddressesKeepingSingleDefault`, `CustomerConcurrencyIT.shouldKeepExactlyOneDefaultUnderConcurrentChanges` | unitário, integração | ✅ |
 | CA-17 | `CustomerAddressServiceImplTest.shouldPromoteMostRecentWhenDefaultIsRemoved`, `CustomerApiIT.shouldManageAddressesKeepingSingleDefault` | unitário, integração | ✅ |
 | CA-18 | `CustomerAddressServiceImplTest.shouldLimitAddressesToTen`, `CustomerApiIT.shouldRejectEleventhAddress`, `CustomerConcurrencyIT.shouldNeverExceedAddressLimitUnderConcurrentInclusions` | unitário, integração, concorrência | ✅ |
 | CA-19 | `CustomerControllerTest.shouldValidateAddressFields`, `CustomerAddressServiceImplTest.shouldUpdateAddressAndRejectUnknownOne`, `CustomerApiIT.shouldNotTouchAddressOfAnotherCustomer` | fatia, unitário, integração | ✅ |
 | CA-20 | `CustomerServiceImplTest.shouldReturnOrderDataWithDefaultChosenOrNoAddress`, `CustomerApiIT.shouldReturnOrderDataWithDefaultOrChosenAddress` | unitário, integração | ✅ |
 | CA-21 | `CustomerServiceImplTest.shouldReturnOrderDataWithDefaultChosenOrNoAddress`, `CustomerApiIT.shouldReturnOrderDataForBlockedCustomerWithoutAddress` | unitário, integração | ✅ |
 
-Também cobrem a feature: `ArchitectureTest` (camadas), `GlobalExceptionHandlerTest` (tradução de erros), `ServiceSkeletonIT` (correlação, máscara de logs, OpenAPI) e `CustomerApiIT.shouldAnswerBadRequestWhenOnlyTheDatabaseCheckRejectsTheData` (CHECK do banco → 400).
+Também cobrem a feature: `ArchitectureTest` (camadas), `GlobalExceptionHandlerTest` (tradução de erros), `ServiceSkeletonIT` (correlação, máscara de logs e OpenAPI conferido contra o contrato) e `CustomerApiIT.shouldAnswerBadRequestWhenOnlyTheDatabaseCheckRejectsTheData` (CHECK do banco → 400).
 
 ## Passos
 - [x] Spec aprovada (Portão 1)

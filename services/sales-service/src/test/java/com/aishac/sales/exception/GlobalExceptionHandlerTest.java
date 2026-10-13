@@ -11,9 +11,11 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.data.core.TypeInformation;
 import org.springframework.http.MediaType;
@@ -50,9 +52,13 @@ class GlobalExceptionHandlerTest {
         mvc.perform(get("/fail/optimistic-lock"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONCURRENT_MODIFICATION"));
+        mvc.perform(get("/fail/pessimistic-lock"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONCURRENT_MODIFICATION"));
         mvc.perform(get("/fail/check"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.errors[0].field").value("ck_orders_total"));
         mvc.perform(get("/fail/unique"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("DATA_INTEGRITY_VIOLATION"));
@@ -103,12 +109,18 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/fail/check")
         void check() {
             throw new DataIntegrityViolationException(
-                    "check", new SQLException("violates check constraint \"ck_orders_total\""));
+                    "check", new ConstraintViolationException("check", new SQLException(), "ck_orders_total"));
         }
 
         @GetMapping("/fail/unique")
         void unique() {
-            throw new DataIntegrityViolationException("unique", new SQLException("violates unique constraint"));
+            throw new DataIntegrityViolationException(
+                    "unique", new ConstraintViolationException("unique", new SQLException(), "uk_orders_number"));
+        }
+
+        @GetMapping("/fail/pessimistic-lock")
+        void pessimisticLock() {
+            throw new PessimisticLockingFailureException("lock timeout");
         }
 
         @GetMapping("/fail/sort")

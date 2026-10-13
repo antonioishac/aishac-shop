@@ -59,7 +59,7 @@ class CustomerAddressServiceImpl implements CustomerAddressService {
             throw new BusinessException(CustomerErrorCode.ADDRESS_LIMIT_EXCEEDED);
         }
         CustomerAddress address = new CustomerAddress();
-        customerMapper.copyAddress(request, address);
+        copy(request, address);
         address.setCustomer(customer);
         address.setDefaultAddress(customer.getAddresses().isEmpty());
         customer.getAddresses().add(address);
@@ -72,7 +72,7 @@ class CustomerAddressServiceImpl implements CustomerAddressService {
     public AddressResponse update(UUID customerId, UUID addressId, AddressRequest request) {
         Customer customer = lockForChange(customerId);
         CustomerAddress address = findAddress(customer, addressId);
-        customerMapper.copyAddress(request, address);
+        copy(request, address);
         customerRepository.flush();
         return customerMapper.toResponse(address);
     }
@@ -96,6 +96,11 @@ class CustomerAddressServiceImpl implements CustomerAddressService {
         Customer customer = lockForChange(customerId);
         CustomerAddress target = findAddress(customer, addressId);
         customer.getAddresses().forEach(address -> address.setDefaultAddress(address == target));
+    }
+
+    private void copy(AddressRequest request, CustomerAddress address) {
+        customerMapper.copyAddress(request, address);
+        address.setZipCode(CustomerRules.normalizeZipCode(request.zipCode()));
     }
 
     private Customer lockForChange(UUID customerId) {

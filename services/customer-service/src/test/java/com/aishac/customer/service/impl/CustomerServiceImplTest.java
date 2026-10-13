@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -113,7 +114,8 @@ class CustomerServiceImplTest {
     void shouldTranslateUniqueViolationRaisedByConcurrentRegistration() {
         given(repository.saveAndFlush(any()))
                 .willThrow(new DataIntegrityViolationException(
-                        "duplicate", new SQLException("violates unique constraint \"uk_customers_cpf\"")));
+                        "duplicate",
+                        new ConstraintViolationException("duplicate", new SQLException(), "uk_customers_cpf")));
 
         assertError(
                 () -> service.create(new CustomerRequest("Ana Souza", "52998224725", "a@x.com", null)),

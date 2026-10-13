@@ -201,38 +201,57 @@ class CustomerApiIT extends AbstractIntegrationTest {
         // Given
         String customer = BASE + "/" + id(createCustomer("Ana Souza", nextValidCpf(), unique("a") + "@x.com"));
 
-        // When
+        // When: A (primeiro, padrão), B e C (mais recente)
         ResponseEntity<String> created = exchange(HttpMethod.POST, customer + "/addresses", address("A", "SP"));
         String a = id(created);
         String b = id(exchange(HttpMethod.POST, customer + "/addresses", address("B", "RJ")));
         String c = id(exchange(HttpMethod.POST, customer + "/addresses", address("C", "MG")));
 
-        // Then
+        // Then (CA-15)
         assertThat(json(created).path("isDefault").asBoolean()).isTrue();
         assertThat(json(created).path("zipCode").asString()).isEqualTo("01310100");
         assertThat(json(created).path("country").asString()).isEqualTo("BR");
 
+        // When / Then (CA-17): remover o padrão A promove o mais recente, C
+        assertThat(exchange(HttpMethod.DELETE, customer + "/addresses/" + a, null)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(204);
+        assertThat(defaultAddressId(customer)).isEqualTo(c);
+
+        // When / Then (CA-16): definir B como padrão desmarca C
         assertThat(exchange(HttpMethod.PUT, customer + "/addresses/" + b + "/default", null)
                         .getStatusCode()
                         .value())
                 .isEqualTo(204);
         assertThat(defaultAddressId(customer)).isEqualTo(b);
 
-        assertThat(exchange(HttpMethod.DELETE, customer + "/addresses/" + b, null)
-                        .getStatusCode()
-                        .value())
-                .isEqualTo(204);
-        assertThat(defaultAddressId(customer)).isEqualTo(c);
-
-        assertThat(json(exchange(HttpMethod.PUT, customer + "/addresses/" + a, address("A2", "BA")))
+        assertThat(json(exchange(HttpMethod.PUT, customer + "/addresses/" + c, address("C2", "BA")))
                         .path("label")
                         .asString())
-                .isEqualTo("A2");
+                .isEqualTo("C2");
         assertThat(json(exchange(HttpMethod.GET, customer, null))
                         .path("version")
                         .asLong())
-                .as("cada operação de endereço incrementa a version do cliente: 3 inclusões, padrão, remoção, edição")
+                .as("cada operação de endereço incrementa a version do cliente: 3 inclusões, remoção, padrão, edição")
                 .isEqualTo(6);
+    }
+
+    // CA-10: uma operação de endereço invalida a version lida antes dela
+    @Test
+    void shouldRejectUpdateWithVersionReadBeforeAnAddressChange() {
+        // Given
+        String customer = BASE + "/" + id(createCustomer("Ana Souza", nextValidCpf(), unique("a") + "@x.com"));
+        long versionReadBefore =
+                json(exchange(HttpMethod.GET, customer, null)).path("version").asLong();
+        id(exchange(HttpMethod.POST, customer + "/addresses", address("Casa", "SP")));
+
+        // When
+        ResponseEntity<String> response =
+                exchange(HttpMethod.PUT, customer, update("Ana Lima", unique("x") + "@x.com", versionReadBefore));
+
+        // Then
+        assertProblem(response, 409, "CONCURRENT_MODIFICATION");
     }
 
     // CA-18

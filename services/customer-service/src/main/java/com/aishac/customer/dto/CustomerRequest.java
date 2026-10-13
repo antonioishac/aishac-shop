@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /** Cadastro de cliente. CPF com ou sem pontuação; dígitos verificadores são validados no service. */
+@Schema(name = "CreateCustomerRequest")
 public record CustomerRequest(
         @Schema(example = "Ana Souza") @NotBlank @Size(min = 3, max = 150)
         String fullName,

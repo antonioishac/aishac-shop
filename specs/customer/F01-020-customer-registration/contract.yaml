@@ -474,7 +474,7 @@ components:
 
   responses:
     BadRequest:
-      description: "VALIDATION_ERROR ou INVALID_CPF"
+      description: "VALIDATION_ERROR, INVALID_CPF ou MALFORMED_REQUEST"
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/ProblemDetail" }
@@ -492,7 +492,7 @@ components:
             customer:
               value: { type: about:blank, title: Not Found, status: 404, detail: Customer not found., code: CUSTOMER_NOT_FOUND, correlationId: 3f1c2a9e-0b7d-4c55-9a1e-2d3f4b5c6d7e, timestamp: "2026-10-12T15:00:00Z" }
     Conflict:
-      description: "CPF_ALREADY_EXISTS, EMAIL_ALREADY_EXISTS, INVALID_STATUS_TRANSITION ou CONCURRENT_MODIFICATION"
+      description: "CPF_ALREADY_EXISTS, EMAIL_ALREADY_EXISTS, INVALID_STATUS_TRANSITION, CONCURRENT_MODIFICATION ou DATA_INTEGRITY_VIOLATION"
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/ProblemDetail" }

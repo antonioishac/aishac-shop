@@ -34,6 +34,7 @@ Quando uma ideia ganhar fase, ela recebe ID definitivo no arquivo da trilha e é
 | IF-022 | Kafka gerenciado na nuvem (MSK) | Após F04 e C4 |
 | IF-023 | Infraestrutura local com Kubernetes (kind/k3d) antes do EKS | Estudo sem custo |
 | IF-024 | Alternativa ao LocalStack sem conta (ex.: Floci) | Avaliar se o token virar problema |
+| IF-025 | Busca de cliente por CPF/e-mail sem dado pessoal na URL (ex.: `POST /customers/search`) | Hoje `GET /customers?cpf=&email=` pode deixar CPF e e-mail em logs de acesso e de proxy. Avaliar com o Gateway (F02) |
 
 ## Qualidade e processo
 

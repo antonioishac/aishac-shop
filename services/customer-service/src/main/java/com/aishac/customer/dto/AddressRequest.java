@@ -6,11 +6,13 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.Locale;
 
-/** Endereço de entrega. CEP aceito com ou sem hífen; chega ao service só com os 8 dígitos. */
+/** Endereço de entrega. CEP aceito com ou sem hífen (o service guarda só os 8 dígitos). */
 public record AddressRequest(
         @Schema(example = "Casa") @NotBlank @Size(max = 40) String label,
 
-        @Schema(example = "01310-100") @NotBlank @Pattern(regexp = "\\d{8}", message = "must have 8 digits")
+        @Schema(example = "01310-100", description = "Com ou sem hífen")
+        @NotBlank
+        @Pattern(regexp = "\\d{5}-?\\d{3}", message = "must have 8 digits, with or without hyphen")
         String zipCode,
 
         @Schema(example = "Avenida Paulista") @NotBlank @Size(max = 150)
@@ -41,7 +43,7 @@ public record AddressRequest(
 
     public AddressRequest {
         label = Inputs.strip(label);
-        zipCode = zipCode == null ? null : zipCode.strip().replace("-", "");
+        zipCode = Inputs.strip(zipCode);
         street = Inputs.strip(street);
         number = Inputs.strip(number);
         complement = Inputs.stripToNull(complement);

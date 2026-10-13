@@ -192,6 +192,8 @@ Contrato completo: [contract.yaml](contract.yaml)
 
 Todos em ProblemDetail com `code`, `correlationId` e `timestamp` (ADR-008).
 
+Códigos transversais do serviço, que podem aparecer em qualquer endpoint: `MALFORMED_REQUEST` (400, JSON inválido), `ROUTE_NOT_FOUND` (404), `METHOD_NOT_ALLOWED` (405), `DATA_INTEGRITY_VIOLATION` (409) e `INTERNAL_ERROR` (500). Um valor rejeitado só pelo CHECK do banco responde `VALIDATION_ERROR` (400).
+
 ## 6. Modelo de dados
 
 > **Status:** aprovado em 2026-10-12 (Portão 2). Banco `aishac_customer` (PostgreSQL 18), dono `customer_app`. Migrations: F01-021.
@@ -270,7 +272,7 @@ Sem índice para `sort=fullName`: a ordenação por nome com filtro já reduz o 
 ### Concorrência
 
 - **Dados do cliente e status:** `UPDATE ... WHERE id = :id AND version = :version`, via `@Version`. Zero linhas afetadas vira `CONCURRENT_MODIFICATION` (CA-10).
-- **Endereços:** toda operação de endereço (incluir, alterar, remover, trocar padrão) **incrementa a `version` do cliente** (lock otimista forçado na raiz). Duas inclusões simultâneas no 10º endereço não ultrapassam o limite: uma delas perde a disputa de versão (RN-12). O limite é garantido pelo agregado, não por CHECK.
+- **Endereços** (atualizado na implementação, garantia mais forte que a aprovada no Portão 2): toda operação de endereço carrega o cliente com **trava pessimista e incremento de versão** (`PESSIMISTIC_FORCE_INCREMENT`). Operações simultâneas no mesmo cliente passam a ser sequenciais: duas inclusões no 10º endereço resultam em uma aceita e outra com `ADDRESS_LIMIT_EXCEEDED` (RN-12). A `version` lida antes de uma operação de endereço fica desatualizada, e um `PUT` com ela recebe `CONCURRENT_MODIFICATION`. O limite é garantido pelo service com a trava, não por CHECK.
 - **CPF e e-mail duplicados em cadastros simultâneos:** a verificação prévia é só para mensagem amigável. A garantia é a UNIQUE, e a violação de `uk_customers_cpf` ou `uk_customers_email` é traduzida para `CPF_ALREADY_EXISTS` ou `EMAIL_ALREADY_EXISTS`.
 - **Endereço padrão:** a *exclusion constraint* adiável impede dois padrões mesmo com transações concorrentes.
 

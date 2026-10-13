@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -54,9 +55,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     // ---- banco ----------------------------------------------------------------------------------
 
-    /** Duas requisições alteraram o mesmo cliente ao mesmo tempo: perde quem gravou por último. */
-    @ExceptionHandler(OptimisticLockingFailureException.class)
-    public ResponseEntity<Object> handleOptimisticLock(OptimisticLockingFailureException ex, WebRequest request) {
+    /**
+     * Duas requisições alteraram o mesmo recurso ao mesmo tempo (lock otimista), ou a trava pessimista não pôde ser
+     * obtida: o cliente deve recarregar e tentar de novo.
+     */
+    @ExceptionHandler({OptimisticLockingFailureException.class, PessimisticLockingFailureException.class})
+    public ResponseEntity<Object> handleConcurrency(Exception ex, WebRequest request) {
         ProblemDetail problem = ProblemDetailFactory.build(
                 CommonErrorCode.CONCURRENT_MODIFICATION, CommonErrorCode.CONCURRENT_MODIFICATION.defaultMessage());
         return handleExceptionInternal(ex, problem, new HttpHeaders(), HttpStatus.CONFLICT, request);
@@ -68,11 +72,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
      */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Object> handleDataIntegrity(DataIntegrityViolationException ex, WebRequest request) {
-        boolean checkViolation =
-                String.valueOf(ex.getMostSpecificCause().getMessage()).contains("ck_");
-        ErrorCode code = checkViolation ? CommonErrorCode.VALIDATION_ERROR : CommonErrorCode.DATA_INTEGRITY_VIOLATION;
-        ProblemDetail problem = ProblemDetailFactory.build(code, code.defaultMessage());
-        return handleExceptionInternal(ex, problem, new HttpHeaders(), code.httpStatus(), request);
+        String constraint = ConstraintViolations.constraintName(ex).orElse("unknown");
+        ProblemDetail problem = ConstraintViolations.isCheckConstraint(constraint)
+                ? ProblemDetailFactory.validation(List.of(new FieldError(constraint, "violates a database rule")))
+                : ProblemDetailFactory.build(
+                        CommonErrorCode.DATA_INTEGRITY_VIOLATION,
+                        CommonErrorCode.DATA_INTEGRITY_VIOLATION.defaultMessage());
+        return handleExceptionInternal(
+                ex, problem, new HttpHeaders(), HttpStatus.valueOf(problem.getStatus()), request);
     }
 
     /** {@code sort} com propriedade inexistente em endpoint paginado. */
@@ -146,6 +153,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problem, headers, HttpStatus.METHOD_NOT_ALLOWED, request);
     }
 
+    /**
+     * Mensagem segura para log: violações de integridade trazem o SQL e a linha inteira (nome, telefone, endereço),
+     * então só o nome da constraint é registrado.
+     */
+    private static String safeMessage(Exception ex) {
+        if (ex instanceof DataIntegrityViolationException integrity) {
+            return "constraint "
+                    + ConstraintViolations.constraintName(integrity).orElse("unknown");
+        }
+        return ex.getMessage();
+    }
+
     // ---- funil único: rastreio garantido + log no nível certo --------------------------------------
 
     @Override
@@ -162,7 +181,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if (status.is5xxServerError()) {
             log.error("Request failed with {}", code, ex);
         } else {
-            log.warn("Request rejected with {}: {}", code, ex.getMessage());
+            log.warn("Request rejected with {}: {}", code, safeMessage(ex));
         }
         return super.handleExceptionInternal(ex, problem, headers, status, request);
     }

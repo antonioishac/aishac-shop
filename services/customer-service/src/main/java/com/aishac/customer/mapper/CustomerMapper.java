@@ -35,5 +35,6 @@ public interface CustomerMapper {
     @Mapping(target = "customer", ignore = true)
     @Mapping(target = "country", ignore = true)
     @Mapping(target = "defaultAddress", ignore = true)
+    @Mapping(target = "zipCode", ignore = true) // normalizado no service
     void copyAddress(AddressRequest request, @MappingTarget CustomerAddress address);
 }

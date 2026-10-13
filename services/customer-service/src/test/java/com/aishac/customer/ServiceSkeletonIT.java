@@ -101,18 +101,42 @@ class ServiceSkeletonIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void shouldPublishOpenApiWithCorrelationHeader() {
+    void shouldPublishOpenApiEquivalentToTheContract() {
         // When
         JsonNode docs = json(get("/v3/api-docs", null));
+        JsonNode paths = docs.path("paths");
 
-        // Then
+        // Then: operações com os operationId do contrato (specs/customer/F01-020-.../contract.yaml)
         assertThat(docs.path("info").path("title").asString()).isEqualTo("Customer Service API");
-        assertThat(docs.path("paths")
-                        .path("/api/v1/customers")
-                        .path("post")
-                        .path("parameters")
-                        .toString())
-                .contains(CorrelationIdFilter.HEADER);
+        assertThat(paths.toString())
+                .contains(
+                        "\"listCustomers\"",
+                        "\"createCustomer\"",
+                        "\"getCustomer\"",
+                        "\"updateCustomer\"",
+                        "\"blockCustomer\"",
+                        "\"unblockCustomer\"",
+                        "\"deactivateCustomer\"",
+                        "\"addAddress\"",
+                        "\"listAddresses\"",
+                        "\"updateAddress\"",
+                        "\"removeAddress\"",
+                        "\"setDefaultAddress\"",
+                        "\"getOrderData\"");
+        assertThat(paths.has("/api/v1/customers/{customerId}")).isTrue();
+        assertThat(paths.has("/api/v1/customers/{customerId}/order-data")).isTrue();
+
+        // Then: cabeçalho de correlação e erros em application/problem+json com o schema do projeto
+        JsonNode getCustomer = paths.path("/api/v1/customers/{customerId}").path("get");
+        assertThat(getCustomer.path("parameters").toString()).contains(CorrelationIdFilter.HEADER);
+        assertThat(getCustomer.path("responses").path("404").path("content").has("application/problem+json"))
+                .isTrue();
+        JsonNode schemas = docs.path("components").path("schemas");
+        assertThat(schemas.has("CreateCustomerRequest")).isTrue();
+        assertThat(schemas.has("UpdateCustomerRequest")).isTrue();
+        assertThat(schemas.has("CustomerPage")).isTrue();
+        assertThat(schemas.path("ProblemDetail").path("required").toString())
+                .contains("code", "correlationId", "timestamp");
     }
 
     private void assertProblem(ResponseEntity<String> response, int status, String code) {

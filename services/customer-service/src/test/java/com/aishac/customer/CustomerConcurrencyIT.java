@@ -14,6 +14,7 @@ import java.util.concurrent.Future;
 import java.util.function.IntFunction;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClient;
@@ -93,6 +94,56 @@ class CustomerConcurrencyIT extends AbstractIntegrationTest {
         String stored =
                 RestClient.create(url(customer + "/addresses")).get().retrieve().body(String.class);
         assertThat(JSON.readTree(stored)).hasSize(10);
+    }
+
+    // RN-13/RN-14 sob concorrência: trocar o padrão e remover o padrão ao mesmo tempo nunca deixa dois padrões
+    @Test
+    void shouldKeepExactlyOneDefaultUnderConcurrentChanges() throws Exception {
+        // Given
+        String customer = "/api/v1/customers/"
+                + JSON.readTree(post(
+                                        "/api/v1/customers",
+                                        Map.of(
+                                                "fullName",
+                                                "Ana Souza",
+                                                "cpf",
+                                                nextValidCpf(),
+                                                "email",
+                                                "def-" + UUID.randomUUID() + "@x.com"))
+                                .getBody())
+                        .path("id")
+                        .asString();
+        List<String> ids = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            ids.add(JSON.readTree(
+                            post(customer + "/addresses", address("E" + i)).getBody())
+                    .path("id")
+                    .asString());
+        }
+
+        // When: remove o padrão (E0) enquanto outras requisições trocam o padrão entre E1 e E2
+        race(i -> i == 0
+                ? exchange("DELETE", customer + "/addresses/" + ids.get(0))
+                : exchange("PUT", customer + "/addresses/" + ids.get(1 + i % 2) + "/default"));
+
+        // Then
+        String stored =
+                RestClient.create(url(customer + "/addresses")).get().retrieve().body(String.class);
+        long defaults = 0;
+        for (var address : JSON.readTree(stored)) {
+            if (address.path("isDefault").asBoolean()) {
+                defaults++;
+            }
+        }
+        assertThat(defaults).isEqualTo(1);
+    }
+
+    private ResponseEntity<String> exchange(String method, String path) {
+        return RestClient.create(url(path))
+                .method(HttpMethod.valueOf(method))
+                .retrieve()
+                .onStatus(status -> true, (req, res) -> {})
+                .toEntity(String.class);
     }
 
     private static void assertSingleWinner(List<ResponseEntity<String>> responses, String loserCode) {

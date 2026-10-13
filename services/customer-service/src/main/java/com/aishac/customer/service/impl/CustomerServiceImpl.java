@@ -10,6 +10,7 @@ import com.aishac.customer.entity.CustomerAddress;
 import com.aishac.customer.entity.CustomerStatus;
 import com.aishac.customer.exception.BusinessException;
 import com.aishac.customer.exception.CommonErrorCode;
+import com.aishac.customer.exception.ConstraintViolations;
 import com.aishac.customer.exception.CustomerErrorCode;
 import com.aishac.customer.exception.NotFoundException;
 import com.aishac.customer.mapper.CustomerMapper;
@@ -168,11 +169,9 @@ class CustomerServiceImpl implements CustomerService {
         try {
             return customerRepository.saveAndFlush(customer);
         } catch (DataIntegrityViolationException e) {
-            String message = String.valueOf(e.getMostSpecificCause().getMessage());
-            throw UNIQUE_CONSTRAINTS.entrySet().stream()
-                    .filter(constraint -> message.contains(constraint.getKey()))
-                    .findFirst()
-                    .<RuntimeException>map(constraint -> new BusinessException(constraint.getValue()))
+            throw ConstraintViolations.constraintName(e)
+                    .map(UNIQUE_CONSTRAINTS::get)
+                    .<RuntimeException>map(BusinessException::new)
                     .orElse(e);
         }
     }
