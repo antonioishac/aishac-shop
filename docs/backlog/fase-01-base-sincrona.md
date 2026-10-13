@@ -57,7 +57,7 @@
 | F01-022 | FEAT | Clientes: criar, buscar por ID, listar paginado (filtros nome/e-mail/status), atualizar, bloquear, **desativar** (sem exclusão física — D18) | Claude | ✅ |
 | F01-023 | FEAT | Endereços: adicionar, listar, atualizar, remover, definir endereço padrão | Claude | ✅ |
 | F01-024 | FEAT | Endpoint consumido por Vendas: dados para pedido (status do cliente + endereço de entrega) | Claude | ✅ |
-| F01-025 | TEC | **Teste de contrato (produtor)** com Spring Cloud Contract para o endpoint do F01-024 | Claude | ⬜ |
+| F01-025 | TEC | **Teste de contrato (produtor)** com Spring Cloud Contract para o endpoint do F01-024 | Claude | ✅ |
 | F01-026 | TEC | Catálogo de erros do serviço (`CUSTOMER_NOT_FOUND`, `CPF_ALREADY_EXISTS`, …) | Claude | ✅ |
 
 ---

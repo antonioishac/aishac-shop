@@ -1,0 +1,36 @@
+description: Com addressId, devolve o endereço escolhido (mesmo que não seja o padrão).
+name: shouldReturnOrderDataWithChosenAddress
+priority: 1
+request:
+  method: GET
+  url: /api/v1/customers/0192f0c4-7d1e-7a3b-9c2d-4e5f6a7b8c9d/order-data
+  queryParameters:
+    addressId: 0192f0c5-2b3c-7d4e-9f5a-6b7c8d9e0f1a
+response:
+  status: 200
+  headers:
+    Content-Type: application/json
+    X-Correlation-Id: 3f1c2b9e-5d4a-4e7f-9a1b-2c3d4e5f6a7b
+  body:
+    customerId: 0192f0c4-7d1e-7a3b-9c2d-4e5f6a7b8c9d
+    fullName: Ana Souza
+    email: ana@example.com
+    status: ACTIVE
+    shippingAddress:
+      id: 0192f0c5-2b3c-7d4e-9f5a-6b7c8d9e0f1a
+      label: Trabalho
+      zipCode: "04538133"
+      street: Avenida Brigadeiro Faria Lima
+      number: "3477"
+      complement: null
+      district: Itaim Bibi
+      city: São Paulo
+      state: SP
+      country: BR
+      isDefault: false
+  matchers:
+    headers:
+      - key: Content-Type
+        regex: "application/json.*"
+      - key: X-Correlation-Id
+        regex: "[A-Za-z0-9-]{1,64}"

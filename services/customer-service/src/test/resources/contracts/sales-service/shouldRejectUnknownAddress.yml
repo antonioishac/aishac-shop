@@ -1,0 +1,32 @@
+description: addressId que não pertence ao cliente responde 404 ADDRESS_NOT_FOUND em ProblemDetail.
+name: shouldRejectUnknownAddress
+priority: 1
+request:
+  method: GET
+  url: /api/v1/customers/0192f0c4-7d1e-7a3b-9c2d-4e5f6a7b8c9d/order-data
+  queryParameters:
+    addressId: 0192f0c5-0000-7000-8000-000000000404
+response:
+  status: 404
+  headers:
+    Content-Type: application/problem+json
+    X-Correlation-Id: 3f1c2b9e-5d4a-4e7f-9a1b-2c3d4e5f6a7b
+  body:
+    title: Not Found
+    status: 404
+    code: ADDRESS_NOT_FOUND
+    correlationId: 3f1c2b9e-5d4a-4e7f-9a1b-2c3d4e5f6a7b
+    timestamp: "2026-10-13T12:00:00Z"
+  matchers:
+    headers:
+      - key: Content-Type
+        regex: "application/problem\\+json.*"
+      - key: X-Correlation-Id
+        regex: "[A-Za-z0-9-]{1,64}"
+    body:
+      - path: $.correlationId
+        type: by_regex
+        value: "[A-Za-z0-9-]{1,64}"
+      - path: $.timestamp
+        type: by_regex
+        predefined: iso_8601_with_offset

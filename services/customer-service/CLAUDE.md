@@ -40,3 +40,10 @@ com.aishac.customer/
 
 - `sales-service` (dados do cliente para o pedido) e `web-bff`.
 - Toda mudança em endpoint consumido exige atualizar o **contrato produtor** (Spring Cloud Contract) e rodar `./mvnw verify`.
+- Contratos em `src/test/resources/contracts/<consumidor>/` (YAML); cada pasta tem a sua classe base em `src/test/java/.../contract/` (`baseClassMappings` no pom). A base é uma fatia `@WebMvcTest` com o service mockado; os ids dos contratos são os da base.
+- Os testes gerados (`*ContractTest`) rodam no `test`; o `package` gera o `customer-service-stubs.jar`. A geração é incremental: depois de mexer no pom ou na base, use `./mvnw clean test`.
+- O plugin **ignora com um WARNING** o YAML que não consegue ler (o build fica verde sem o teste e sem o stub). O `ContractGenerationTest` compara o número de contratos com o de testes gerados; pasta de consumidor nova entra nele.
+- Contratos com a mesma URL e query diferente usam `priority` (menor vence no WireMock). O matcher `absent` de query não funciona em YAML (o teste gerado envia `param=null`).
+- O ProblemDetail não traz `type` quando é `about:blank`: não o coloque no contrato.
+- O Spring Cloud Contract saiu do BOM `spring-cloud-dependencies` na 2025.1.x: versão própria em `spring-cloud-contract.version` (BOM e plugin).
+- Como o sales-service obtém os stubs (Stub Runner com `install` local ou lendo os contratos do monorepo, e o gatilho da CI) é decidido no F01-044.

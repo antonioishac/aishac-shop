@@ -1,0 +1,33 @@
+description: Cliente desativado responde 200 com o status real; a decisão de recusar o pedido é do sales-service.
+name: shouldReturnOrderDataOfInactiveCustomer
+request:
+  method: GET
+  url: /api/v1/customers/0192f0c4-a04b-7d6e-8f5a-7b8c9d0e1f2a/order-data
+response:
+  status: 200
+  headers:
+    Content-Type: application/json
+    X-Correlation-Id: 3f1c2b9e-5d4a-4e7f-9a1b-2c3d4e5f6a7b
+  body:
+    customerId: 0192f0c4-a04b-7d6e-8f5a-7b8c9d0e1f2a
+    fullName: Diego Rocha
+    email: diego@example.com
+    status: INACTIVE
+    shippingAddress:
+      id: 0192f0c5-1a2b-7c3d-8e4f-5a6b7c8d9e0f
+      label: Casa
+      zipCode: "01310100"
+      street: Avenida Paulista
+      number: "1000"
+      complement: Apto 42
+      district: Bela Vista
+      city: São Paulo
+      state: SP
+      country: BR
+      isDefault: true
+  matchers:
+    headers:
+      - key: Content-Type
+        regex: "application/json.*"
+      - key: X-Correlation-Id
+        regex: "[A-Za-z0-9-]{1,64}"
