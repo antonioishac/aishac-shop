@@ -21,7 +21,8 @@ public record AddressRequest(
         @Schema(example = "1000", description = "Aceita 'S/N'") @NotBlank @Size(max = 10)
         String number,
 
-        @Schema(example = "Apto 42") @Size(max = 60) String complement,
+        @Schema(example = "Apto 42", nullable = true) @Size(max = 60)
+        String complement,
 
         @Schema(example = "Bela Vista") @NotBlank @Size(max = 80)
         String district,
@@ -29,12 +30,7 @@ public record AddressRequest(
         @Schema(example = "São Paulo") @NotBlank @Size(max = 80)
         String city,
 
-        @Schema(
-                example = "SP",
-                allowableValues = {
-                    "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR",
-                    "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"
-                })
+        @Schema(ref = OpenApiSchemas.BRAZILIAN_STATE)
         @NotBlank
         @Pattern(
                 regexp = "AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO",

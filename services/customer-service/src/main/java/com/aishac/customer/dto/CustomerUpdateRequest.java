@@ -19,6 +19,7 @@ public record CustomerUpdateRequest(
         @Size(max = 254)
         String email,
 
+        @Schema(nullable = true)
         @Pattern(regexp = "\\d{10,11}", message = "must have 10 or 11 digits including area code")
         String phone,
 

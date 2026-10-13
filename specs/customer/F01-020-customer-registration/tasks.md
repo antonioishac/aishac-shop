@@ -25,7 +25,7 @@
 | CA-20 | `CustomerServiceImplTest.shouldReturnOrderDataWithDefaultChosenOrNoAddress`, `CustomerApiIT.shouldReturnOrderDataWithDefaultOrChosenAddress` | unitário, integração | ✅ |
 | CA-21 | `CustomerServiceImplTest.shouldReturnOrderDataWithDefaultChosenOrNoAddress`, `CustomerApiIT.shouldReturnOrderDataForBlockedCustomerWithoutAddress` | unitário, integração | ✅ |
 
-Também cobrem a feature: `ArchitectureTest` (camadas), `GlobalExceptionHandlerTest` (tradução de erros), `ServiceSkeletonIT` (correlação, máscara de logs e OpenAPI conferido contra o contrato) e `CustomerApiIT.shouldAnswerBadRequestWhenOnlyTheDatabaseCheckRejectsTheData` (CHECK do banco → 400).
+Também cobrem a feature: `ArchitectureTest` (camadas), `GlobalExceptionHandlerTest` (tradução de erros, inclusive banco fora do ar → 503), `ConstraintViolationsTest` (CHECK → campo da API), `ServiceSkeletonIT` (correlação, máscara de logs, valores rejeitados fora do log e OpenAPI comparado ao `contract.yaml`: operações, status, `required`, enums, `$ref` e campos anuláveis) e `CustomerApiIT.shouldAnswerBadRequestWhenOnlyTheDatabaseCheckRejectsTheData` (CHECK do banco → 400).
 
 ## Passos
 - [x] Spec aprovada (Portão 1)

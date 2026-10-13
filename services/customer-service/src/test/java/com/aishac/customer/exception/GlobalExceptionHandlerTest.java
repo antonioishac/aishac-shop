@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.dao.PessimisticLockingFailureException;
@@ -21,6 +22,7 @@ import org.springframework.data.core.TypeInformation;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -58,10 +60,23 @@ class GlobalExceptionHandlerTest {
         mvc.perform(get("/fail/check"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
-                .andExpect(jsonPath("$.errors[0].field").value("ck_orders_total"));
+                .andExpect(jsonPath("$.errors[0].field").value("cpf"));
+        mvc.perform(get("/fail/multi-field-check"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("request"));
         mvc.perform(get("/fail/unique"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("DATA_INTEGRITY_VIOLATION"));
+    }
+
+    @Test
+    void shouldAnswerServiceUnavailableWhenTheDatabaseIsDown() throws Exception {
+        mvc.perform(get("/fail/no-transaction"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("SERVICE_UNAVAILABLE"));
+        mvc.perform(get("/fail/no-connection"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("SERVICE_UNAVAILABLE"));
     }
 
     @Test
@@ -109,7 +124,23 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/fail/check")
         void check() {
             throw new DataIntegrityViolationException(
-                    "check", new ConstraintViolationException("check", new SQLException(), "ck_orders_total"));
+                    "check", new ConstraintViolationException("check", new SQLException(), "ck_customers_cpf_format"));
+        }
+
+        @GetMapping("/fail/multi-field-check")
+        void multiFieldCheck() {
+            throw new DataIntegrityViolationException(
+                    "check", new ConstraintViolationException("check", new SQLException(), "ck_customers_block_data"));
+        }
+
+        @GetMapping("/fail/no-transaction")
+        void noTransaction() {
+            throw new CannotCreateTransactionException("connection refused");
+        }
+
+        @GetMapping("/fail/no-connection")
+        void noConnection() {
+            throw new DataAccessResourceFailureException("connection refused");
         }
 
         @GetMapping("/fail/unique")

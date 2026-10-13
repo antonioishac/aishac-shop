@@ -24,7 +24,7 @@ public record CustomerRequest(
         @Size(max = 254)
         String email,
 
-        @Schema(example = "11987654321", description = "DDD + número, só dígitos")
+        @Schema(example = "11987654321", description = "DDD + número, só dígitos", nullable = true)
         @Pattern(regexp = "\\d{10,11}", message = "must have 10 or 11 digits including area code")
         String phone) {
 

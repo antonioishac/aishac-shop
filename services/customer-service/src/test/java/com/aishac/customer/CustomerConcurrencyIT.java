@@ -122,11 +122,20 @@ class CustomerConcurrencyIT extends AbstractIntegrationTest {
         }
 
         // When: remove o padrão (E0) enquanto outras requisições trocam o padrão entre E1 e E2
-        race(i -> i == 0
+        List<ResponseEntity<String>> responses = race(i -> i == 0
                 ? exchange("DELETE", customer + "/addresses/" + ids.get(0))
                 : exchange("PUT", customer + "/addresses/" + ids.get(1 + i % 2) + "/default"));
 
-        // Then
+        // Then: nenhuma requisição falha por erro interno; só a trava pode recusar com conflito
+        assertThat(responses.getFirst().getStatusCode().value()).isEqualTo(204);
+        assertThat(responses)
+                .allSatisfy(r -> assertThat(r.getStatusCode().value() == 204
+                                || JSON.readTree(r.getBody())
+                                        .path("code")
+                                        .asString()
+                                        .equals("CONCURRENT_MODIFICATION"))
+                        .as(r.getStatusCode() + " " + r.getBody())
+                        .isTrue());
         String stored =
                 RestClient.create(url(customer + "/addresses")).get().retrieve().body(String.class);
         long defaults = 0;

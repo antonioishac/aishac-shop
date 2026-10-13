@@ -46,6 +46,7 @@ class CustomerControllerTest {
     // CA-05
     @Test
     void shouldListEveryInvalidFieldOnCreate() throws Exception {
+        // When / Then
         mvc.perform(post("/api/v1/customers")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"fullName\":\"\",\"cpf\":\"123\",\"email\":\"not-an-email\",\"phone\":\"12\"}"))
@@ -57,6 +58,7 @@ class CustomerControllerTest {
 
     @Test
     void shouldRequireVersionOnUpdate() throws Exception {
+        // When / Then
         mvc.perform(put(CUSTOMER)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"fullName\":\"Ana Souza\",\"email\":\"ana@x.com\"}"))
@@ -67,6 +69,7 @@ class CustomerControllerTest {
     // CA-19
     @Test
     void shouldValidateAddressFields() throws Exception {
+        // When / Then
         mvc.perform(post(CUSTOMER + "/addresses")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID_ADDRESS.replace("01310-100", "1310-100").replace("\"SP\"}", "\"XX\"}")))
@@ -77,6 +80,7 @@ class CustomerControllerTest {
 
     @Test
     void shouldRejectMalformedIdsUnknownStatusAndMalformedBody() throws Exception {
+        // When / Then
         mvc.perform(get("/api/v1/customers/not-a-uuid"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[0].field").value("customerId"));
@@ -92,6 +96,7 @@ class CustomerControllerTest {
 
     @Test
     void shouldTranslateServiceExceptionsUsingTheCatalogStatus() throws Exception {
+        // Given / When / Then: cada exceção do service vira o status do catálogo
         given(customerService.deactivate(any()))
                 .willThrow(new NotFoundException(CustomerErrorCode.CUSTOMER_NOT_FOUND, UUID.randomUUID()));
         mvc.perform(post(CUSTOMER + "/deactivate"))
@@ -115,6 +120,7 @@ class CustomerControllerTest {
 
     @Test
     void shouldRejectBlankBlockReason() throws Exception {
+        // When / Then
         mvc.perform(post(CUSTOMER + "/block")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"reason\":\" \"}"))

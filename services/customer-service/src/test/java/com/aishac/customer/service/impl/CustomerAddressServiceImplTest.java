@@ -78,11 +78,14 @@ class CustomerAddressServiceImplTest {
     // CA-15
     @Test
     void shouldMakeOnlyTheFirstAddressDefault() {
+        // Given
         Customer customer = customer(CustomerStatus.ACTIVE);
 
+        // When
         AddressResponse first = service.add(ID, request("Casa"));
         AddressResponse second = service.add(ID, request("Trabalho"));
 
+        // Then
         assertThat(first.isDefault()).isTrue();
         assertThat(first.zipCode()).isEqualTo("01310100");
         assertThat(first.state()).isEqualTo("SP");
@@ -94,12 +97,15 @@ class CustomerAddressServiceImplTest {
     // CA-16
     @Test
     void shouldKeepASingleDefaultWhenSwitching() {
+        // Given
         Customer customer = customer(CustomerStatus.ACTIVE);
         CustomerAddress a = existing(customer, "A", true, 0);
         CustomerAddress b = existing(customer, "B", false, 1);
 
+        // When
         service.setDefault(ID, b.getId());
 
+        // Then
         assertThat(b.isDefaultAddress()).isTrue();
         assertThat(a.isDefaultAddress()).isFalse();
         assertThat(service.list(ID).getFirst().id()).isEqualTo(b.getId());
@@ -108,13 +114,16 @@ class CustomerAddressServiceImplTest {
     // CA-17
     @Test
     void shouldPromoteMostRecentWhenDefaultIsRemoved() {
+        // Given
         Customer customer = customer(CustomerStatus.ACTIVE);
         CustomerAddress a = existing(customer, "A", true, 0);
         existing(customer, "B", false, 1);
         CustomerAddress c = existing(customer, "C", false, 2);
 
+        // When
         service.remove(ID, a.getId());
 
+        // Then
         assertThat(customer.getAddresses()).hasSize(2);
         assertThat(c.isDefaultAddress()).isTrue();
     }
@@ -122,20 +131,24 @@ class CustomerAddressServiceImplTest {
     // CA-18
     @Test
     void shouldLimitAddressesToTen() {
+        // Given
         Customer customer = customer(CustomerStatus.ACTIVE);
         for (int i = 0; i < CustomerRules.MAX_ADDRESSES; i++) {
             existing(customer, "E" + i, i == 0, i);
         }
 
+        // When / Then
         assertError(() -> service.add(ID, request("Extra")), CustomerErrorCode.ADDRESS_LIMIT_EXCEEDED);
     }
 
     // CA-14
     @Test
     void shouldRejectAddressChangesWhenCustomerIsInactive() {
+        // Given
         Customer customer = customer(CustomerStatus.INACTIVE);
         CustomerAddress home = existing(customer, "Casa", true, 0);
 
+        // When / Then
         assertError(() -> service.add(ID, request("Casa 2")), CustomerErrorCode.CUSTOMER_INACTIVE);
         assertError(() -> service.update(ID, home.getId(), request("Casa 3")), CustomerErrorCode.CUSTOMER_INACTIVE);
         assertError(() -> service.remove(ID, home.getId()), CustomerErrorCode.CUSTOMER_INACTIVE);
@@ -145,11 +158,14 @@ class CustomerAddressServiceImplTest {
     // CA-19
     @Test
     void shouldUpdateAddressAndRejectUnknownOne() {
+        // Given
         Customer customer = customer(CustomerStatus.ACTIVE);
         CustomerAddress home = existing(customer, "Casa", true, 0);
 
+        // When
         AddressResponse updated = service.update(ID, home.getId(), request("Casa da praia"));
 
+        // Then
         assertThat(updated.label()).isEqualTo("Casa da praia");
         assertThat(updated.isDefault()).isTrue();
         assertError(() -> service.update(ID, UUID.randomUUID(), request("X")), CustomerErrorCode.ADDRESS_NOT_FOUND);

@@ -24,4 +24,22 @@ public final class ConstraintViolations {
     public static boolean isCheckConstraint(String constraintName) {
         return constraintName.startsWith("ck_");
     }
+
+    /**
+     * Campo da API correspondente a um CHECK do banco, para a resposta não expor o nome da constraint. CHECK que
+     * envolve mais de um campo (ex.: status e datas) responde como {@code request}.
+     */
+    public static String apiField(String constraintName) {
+        return switch (constraintName) {
+            case "ck_customers_full_name_length" -> "fullName";
+            case "ck_customers_cpf_format" -> "cpf";
+            case "ck_customers_email_normalized" -> "email";
+            case "ck_customers_phone_format" -> "phone";
+            case "ck_customer_addresses_label_not_blank" -> "label";
+            case "ck_customer_addresses_zip_code_format" -> "zipCode";
+            case "ck_customer_addresses_state" -> "state";
+            case "ck_customer_addresses_country" -> "country";
+            default -> "request";
+        };
+    }
 }

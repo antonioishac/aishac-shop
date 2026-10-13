@@ -138,6 +138,9 @@ class CustomerApiIT extends AbstractIntegrationTest {
         assertThat(json(exchange(HttpMethod.GET, BASE + "?cpf=" + nextValidCpf(), null))
                         .path("content"))
                 .isEmpty();
+        assertThat(json(exchange(HttpMethod.GET, BASE + "?email=" + unique("nobody") + "@example.com", null))
+                        .path("content"))
+                .isEmpty();
     }
 
     // CA-09, CA-10
@@ -172,18 +175,32 @@ class CustomerApiIT extends AbstractIntegrationTest {
         String customer = BASE + "/" + id(createCustomer("Ana Souza", nextValidCpf(), unique("a") + "@x.com"));
         String home = id(exchange(HttpMethod.POST, customer + "/addresses", address("Casa", "SP")));
 
-        // When / Then
+        // When / Then (CA-11): bloquear e desbloquear
         JsonNode blocked = json(exchange(HttpMethod.POST, customer + "/block", Map.of("reason", "Fraude")));
         assertThat(blocked.path("status").asString()).isEqualTo("BLOCKED");
         assertThat(blocked.path("blockReason").asString()).isEqualTo("Fraude");
+        assertThat(blocked.path("blockedAt").isNull()).isFalse();
 
+        JsonNode unblocked = json(exchange(HttpMethod.POST, customer + "/unblock", null));
+        assertThat(unblocked.path("status").asString()).isEqualTo("ACTIVE");
+        assertThat(unblocked.path("blockReason").isNull()).isTrue();
+        assertThat(unblocked.path("blockedAt").isNull()).isTrue();
+
+        // When / Then (CA-12): desativar um cliente bloqueado
+        exchange(HttpMethod.POST, customer + "/block", Map.of("reason", "Fraude"));
         JsonNode inactive = json(exchange(HttpMethod.POST, customer + "/deactivate", null));
         assertThat(inactive.path("status").asString()).isEqualTo("INACTIVE");
         assertThat(inactive.path("blockReason").isNull()).isTrue();
         assertThat(json(exchange(HttpMethod.GET, customer, null)).path("status").asString())
                 .isEqualTo("INACTIVE");
 
+        // When / Then (CA-13, CA-14): INACTIVE é final e congela o cadastro
         assertProblem(exchange(HttpMethod.POST, customer + "/unblock", null), 409, "INVALID_STATUS_TRANSITION");
+        assertProblem(
+                exchange(HttpMethod.POST, customer + "/block", Map.of("reason", "Fraude")),
+                409,
+                "INVALID_STATUS_TRANSITION");
+        assertProblem(exchange(HttpMethod.POST, customer + "/deactivate", null), 409, "INVALID_STATUS_TRANSITION");
         long version = inactive.path("version").asLong();
         assertProblem(exchange(HttpMethod.PUT, customer, update("Ana", "z@x.com", version)), 422, "CUSTOMER_INACTIVE");
         assertProblem(

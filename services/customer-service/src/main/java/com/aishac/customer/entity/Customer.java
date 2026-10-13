@@ -12,6 +12,7 @@ import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -37,7 +38,8 @@ public class Customer extends BaseEntity {
     @Column(name = "full_name", nullable = false, length = 150)
     private String fullName;
 
-    /** Só os 11 dígitos; imutável depois do cadastro (RN-03). */
+    /** Só os 11 dígitos; imutável depois do cadastro (RN-03), por isso sem setter. */
+    @Setter(AccessLevel.NONE)
     @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "cpf", nullable = false, length = 11, updatable = false)
     private String cpf;
@@ -63,6 +65,8 @@ public class Customer extends BaseEntity {
     @Column(name = "deactivated_at")
     private Instant deactivatedAt;
 
+    /** Controlado só pelo Hibernate (RN-09); a versão enviada pelo cliente é comparada no service. */
+    @Setter(AccessLevel.NONE)
     @Version
     @Column(name = "version", nullable = false)
     private Long version;

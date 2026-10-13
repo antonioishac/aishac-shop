@@ -192,7 +192,7 @@ Contrato completo: [contract.yaml](contract.yaml)
 
 Todos em ProblemDetail com `code`, `correlationId` e `timestamp` (ADR-008).
 
-Códigos transversais do serviço, que podem aparecer em qualquer endpoint: `MALFORMED_REQUEST` (400, JSON inválido), `ROUTE_NOT_FOUND` (404), `METHOD_NOT_ALLOWED` (405), `DATA_INTEGRITY_VIOLATION` (409) e `INTERNAL_ERROR` (500). Um valor rejeitado só pelo CHECK do banco responde `VALIDATION_ERROR` (400).
+Códigos transversais do serviço, que podem aparecer em qualquer endpoint: `MALFORMED_REQUEST` (400, JSON inválido), `ROUTE_NOT_FOUND` (404), `METHOD_NOT_ALLOWED` (405), `DATA_INTEGRITY_VIOLATION` (409), `INTERNAL_ERROR` (500) e `SERVICE_UNAVAILABLE` (503, banco fora do ar). Um valor rejeitado só pelo CHECK do banco responde `VALIDATION_ERROR` (400), com o campo da API correspondente (ou `request`, quando o CHECK envolve mais de um campo), nunca o nome da constraint.
 
 ## 6. Modelo de dados
 
@@ -349,7 +349,7 @@ Separação prevista nas migrations (F01-021): `V1__create_customers.sql` (exten
 
 ## 7. Dependências externas
 - **Nenhuma chamada a outros serviços.** O customer-service é consumido pelo sales-service (`order-data`, com teste de contrato produtor no F01-025) e pelo web-bff.
-- Banco `aishac_customer` (obrigatório): sem banco, o serviço fica *not ready* e responde `503`.
+- Banco `aishac_customer` (obrigatório): sem banco, o serviço fica *not ready* (`db` no grupo de readiness, em `config-repo/customer-service.properties`) e responde `503` com `SERVICE_UNAVAILABLE`.
 - Nenhuma configuração nova por ambiente.
 
 ## 8. Fora de escopo

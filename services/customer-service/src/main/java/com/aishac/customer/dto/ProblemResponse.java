@@ -11,8 +11,13 @@ import java.util.List;
 @Schema(name = "ProblemDetail", description = "RFC 9457 com as extensões do projeto (ADR-008)")
 public record ProblemResponse(
         @Schema(example = "about:blank") String type,
-        @Schema(example = "Not Found") String title,
-        @Schema(example = "404") int status,
+
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, example = "Not Found")
+        String title,
+
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, example = "404")
+        int status,
+
         @Schema(example = "Customer not found.") String detail,
         String instance,
 

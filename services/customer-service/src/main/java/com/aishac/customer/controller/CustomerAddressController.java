@@ -6,6 +6,7 @@ import com.aishac.customer.dto.ProblemResponse;
 import com.aishac.customer.service.CustomerAddressService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.headers.Header;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -42,7 +43,16 @@ public class CustomerAddressController {
             summary = "Listar endereços",
             description = "Até 10 itens; o padrão vem primeiro.")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Endereços do cliente"),
+        @ApiResponse(
+                responseCode = "200",
+                description = "Endereços do cliente",
+                content =
+                        @Content(
+                                mediaType = "application/json",
+                                array =
+                                        @ArraySchema(
+                                                maxItems = 10,
+                                                schema = @Schema(implementation = AddressResponse.class)))),
         @ApiResponse(
                 responseCode = "404",
                 description = "CUSTOMER_NOT_FOUND",
