@@ -1,0 +1,1005 @@
+openapi: 3.1.0
+info:
+  title: Sales Service API — Catálogo (F01-030)
+  version: "1"
+  description: |
+    Categorias, produtos, estoque e imagens do Aishac Shop. Contrato da spec F01-030.
+    Erros em ProblemDetail (RFC 9457) com `code`, `correlationId` e `timestamp` (ADR-008).
+    Dinheiro como string decimal com 2 casas (ADR-014).
+servers:
+  - url: http://localhost:8082
+    description: local
+tags:
+  - name: Categories
+    description: Categorias de produto (um nível)
+  - name: Products
+    description: Produtos, preço e situação
+  - name: Stock
+    description: Movimentações e histórico de estoque
+  - name: Product images
+    description: Imagens de produto no S3 (URL pré-assinada)
+
+paths:
+  /api/v1/categories:
+    post:
+      tags: [Categories]
+      operationId: createCategory
+      summary: Cadastrar categoria
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCategoryRequest"
+            example:
+              name: Calçados
+              description: Tênis, sapatos e sandálias
+      responses:
+        "201":
+          description: Categoria cadastrada
+          headers:
+            Location:
+              description: URL da categoria criada
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    get:
+      tags: [Categories]
+      operationId: listCategories
+      summary: Listar categorias
+      description: "Paginado. Ordenação padrão: name,asc."
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - name: name
+          in: query
+          required: false
+          description: Parte do nome, sem diferenciar maiúsculas
+          schema:
+            type: string
+            maxLength: 80
+        - name: active
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - $ref: "#/components/parameters/Sort"
+      responses:
+        "200":
+          description: Página de categorias
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/categories/{categoryId}:
+    parameters:
+      - $ref: "#/components/parameters/CategoryId"
+      - $ref: "#/components/parameters/CorrelationId"
+    get:
+      tags: [Categories]
+      operationId: getCategory
+      summary: Buscar categoria por id
+      responses:
+        "200":
+          description: Categoria
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Categories]
+      operationId: updateCategory
+      summary: Atualizar categoria
+      description: Substitui nome e descrição. Exige a version lida (lock otimista).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCategoryRequest"
+      responses:
+        "200":
+          description: Categoria atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/categories/{categoryId}/deactivate:
+    parameters:
+      - $ref: "#/components/parameters/CategoryId"
+      - $ref: "#/components/parameters/CorrelationId"
+    post:
+      tags: [Categories]
+      operationId: deactivateCategory
+      summary: Desativar categoria
+      description: Os produtos continuam ativos, mas deixam de ser vendáveis. Idempotente.
+      responses:
+        "200":
+          description: Categoria desativada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/categories/{categoryId}/activate:
+    parameters:
+      - $ref: "#/components/parameters/CategoryId"
+      - $ref: "#/components/parameters/CorrelationId"
+    post:
+      tags: [Categories]
+      operationId: activateCategory
+      summary: Reativar categoria
+      description: Idempotente.
+      responses:
+        "200":
+          description: Categoria ativa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/products:
+    post:
+      tags: [Products]
+      operationId: createProduct
+      summary: Cadastrar produto
+      description: Nasce ativo, com o estoque inicial registrado como uma entrada no histórico.
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+            example:
+              sku: tenis-run-42
+              name: Tênis Run
+              description: Tênis de corrida leve
+              price: "299.90"
+              categoryId: 0192f0c4-7d1e-7a3b-9c2d-4e5f6a7b8c9d
+              initialStock: 10
+      responses:
+        "201":
+          description: Produto cadastrado
+          headers:
+            Location:
+              description: URL do produto criado
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+    get:
+      tags: [Products]
+      operationId: listProducts
+      summary: Listar produtos
+      description: |
+        Paginado. Filtros combináveis. `sellable=true` traz só produtos ativos de categorias ativas (vitrine).
+        Ordenação por `name`, `price` ou `createdAt`; padrão `createdAt,desc`.
+        Com o S3 indisponível, a listagem funciona e `primaryImage` vem nulo.
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - name: categoryId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: name
+          in: query
+          required: false
+          description: Parte do nome, sem diferenciar maiúsculas
+          schema:
+            type: string
+            maxLength: 150
+        - name: minPrice
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Money"
+        - name: maxPrice
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Money"
+        - name: active
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: sellable
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - $ref: "#/components/parameters/Sort"
+      responses:
+        "200":
+          description: Página de produtos (vazia se nenhum corresponder)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/products/{productId}:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+      - $ref: "#/components/parameters/CorrelationId"
+    get:
+      tags: [Products]
+      operationId: getProduct
+      summary: Buscar produto por id
+      description: Qualquer situação. Inclui a imagem principal com URL pré-assinada (nula se o S3 falhar).
+      responses:
+        "200":
+          description: Produto
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Products]
+      operationId: updateProduct
+      summary: Atualizar produto
+      description: Substitui nome, descrição, preço e categoria. SKU e estoque não mudam. Exige a version lida.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductRequest"
+      responses:
+        "200":
+          description: Produto atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
+  /api/v1/products/{productId}/deactivate:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+      - $ref: "#/components/parameters/CorrelationId"
+    post:
+      tags: [Products]
+      operationId: deactivateProduct
+      summary: Desativar produto
+      description: Idempotente. Não existe exclusão de produto.
+      responses:
+        "200":
+          description: Produto desativado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/products/{productId}/activate:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+      - $ref: "#/components/parameters/CorrelationId"
+    post:
+      tags: [Products]
+      operationId: activateProduct
+      summary: Reativar produto
+      description: Idempotente.
+      responses:
+        "200":
+          description: Produto ativo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/products/{productId}/stock-movements:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+      - $ref: "#/components/parameters/CorrelationId"
+    post:
+      tags: [Stock]
+      operationId: createStockMovement
+      summary: Registrar entrada ou saída de estoque
+      description: A saída é atômica e nunca deixa o estoque negativo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockMovementRequest"
+            example:
+              type: ENTRY
+              quantity: 5
+              reason: Reposição do fornecedor
+      responses:
+        "201":
+          description: Movimentação registrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockMovementResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+    get:
+      tags: [Stock]
+      operationId: listStockMovements
+      summary: Histórico de estoque
+      description: Da movimentação mais recente para a mais antiga.
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+      responses:
+        "200":
+          description: Página de movimentações
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockMovementPage"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/products/{productId}/images:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+      - $ref: "#/components/parameters/CorrelationId"
+    post:
+      tags: [Product images]
+      operationId: uploadProductImage
+      summary: Enviar imagem
+      description: |
+        JPEG, PNG ou WebP (validado pelo conteúdo), até o limite configurado (padrão 5 MB), no máximo 8 por produto.
+        A primeira imagem vira principal.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, altText]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                altText:
+                  type: string
+                  minLength: 1
+                  maxLength: 150
+      responses:
+        "201":
+          description: Imagem enviada
+          headers:
+            Location:
+              description: URL da imagem criada
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductImageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "503":
+          $ref: "#/components/responses/StorageUnavailable"
+    get:
+      tags: [Product images]
+      operationId: listProductImages
+      summary: Listar imagens do produto
+      description: Ordenadas pela posição, com URL pré-assinada.
+      responses:
+        "200":
+          description: Imagens
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 8
+                items:
+                  $ref: "#/components/schemas/ProductImageResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/StorageUnavailable"
+
+  /api/v1/products/{productId}/images/{imageId}:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+      - $ref: "#/components/parameters/ImageId"
+      - $ref: "#/components/parameters/CorrelationId"
+    get:
+      tags: [Product images]
+      operationId: getProductImage
+      summary: Buscar imagem
+      responses:
+        "200":
+          description: Imagem
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductImageResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/StorageUnavailable"
+    patch:
+      tags: [Product images]
+      operationId: updateProductImage
+      summary: Atualizar metadados da imagem
+      description: Texto alternativo, posição e/ou principal. Campos ausentes não mudam. O arquivo não muda.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductImageRequest"
+      responses:
+        "200":
+          description: Imagem atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductImageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Product images]
+      operationId: deleteProductImage
+      summary: Excluir imagem
+      description: Banco primeiro, S3 depois. Se era a principal, a próxima pela posição assume.
+      responses:
+        "204":
+          description: Imagem excluída
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/products/{productId}/images/{imageId}/file:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+      - $ref: "#/components/parameters/ImageId"
+      - $ref: "#/components/parameters/CorrelationId"
+    put:
+      tags: [Product images]
+      operationId: replaceProductImageFile
+      summary: Substituir o arquivo da imagem
+      description: Grava em chave nova e remove o objeto antigo. Mantém id, texto alternativo, posição e principal.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Arquivo substituído
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductImageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/StorageUnavailable"
+
+components:
+  parameters:
+    CategoryId:
+      name: categoryId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ImageId:
+      name: imageId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: ID de correlação; gerado se ausente e devolvido na resposta.
+      schema:
+        type: string
+        pattern: "^[A-Za-z0-9-]{1,64}$"
+    Page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      required: false
+      description: Valores acima de 100 são limitados a 100.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Sort:
+      name: sort
+      in: query
+      required: false
+      description: "Propriedade e direção (ex.: price,asc). Propriedade inexistente: 400 VALIDATION_ERROR."
+      schema:
+        type: string
+
+  schemas:
+    Money:
+      type: string
+      description: Valor em BRL, string decimal com até 2 casas
+      pattern: "^\\d{1,17}(\\.\\d{1,2})?$"
+      example: "299.90"
+
+    CreateCategoryRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 80
+        description:
+          type: [string, "null"]
+          maxLength: 500
+
+    UpdateCategoryRequest:
+      type: object
+      required: [name, version]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 80
+        description:
+          type: [string, "null"]
+          maxLength: 500
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+
+    CategoryResponse:
+      type: object
+      required: [id, name, active, version, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: [string, "null"]
+        active:
+          type: boolean
+        version:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CategoryPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryResponse"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+
+    CreateProductRequest:
+      type: object
+      required: [sku, name, price, categoryId, initialStock]
+      properties:
+        sku:
+          type: string
+          description: Letras, dígitos e hífen; guardado em maiúsculas
+          pattern: "^[A-Za-z0-9-]{3,40}$"
+        name:
+          type: string
+          minLength: 3
+          maxLength: 150
+        description:
+          type: [string, "null"]
+          maxLength: 2000
+        price:
+          $ref: "#/components/schemas/Money"
+        categoryId:
+          type: string
+          format: uuid
+        initialStock:
+          type: integer
+          minimum: 0
+          maximum: 100000
+
+    UpdateProductRequest:
+      type: object
+      required: [name, price, categoryId, version]
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 150
+        description:
+          type: [string, "null"]
+          maxLength: 2000
+        price:
+          $ref: "#/components/schemas/Money"
+        categoryId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+
+    ProductResponse:
+      type: object
+      required: [id, sku, name, price, category, stockQuantity, active, sellable, primaryImage, version, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        sku:
+          type: string
+          example: TENIS-RUN-42
+        name:
+          type: string
+        description:
+          type: [string, "null"]
+        price:
+          type: string
+          description: Sempre com 2 casas decimais
+          example: "299.90"
+        category:
+          $ref: "#/components/schemas/CategorySummary"
+        stockQuantity:
+          type: integer
+          minimum: 0
+        active:
+          type: boolean
+        sellable:
+          type: boolean
+          description: Produto e categoria ativos
+        primaryImage:
+          description: Nulo se não houver imagem ou se o S3 estiver indisponível
+          oneOf:
+            - $ref: "#/components/schemas/ProductImageResponse"
+            - type: "null"
+        version:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CategorySummary:
+      type: object
+      required: [id, name, active]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        active:
+          type: boolean
+
+    ProductPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductResponse"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+
+    StockMovementType:
+      type: string
+      enum: [ENTRY, EXIT]
+
+    StockMovementRequest:
+      type: object
+      required: [type, quantity, reason]
+      properties:
+        type:
+          $ref: "#/components/schemas/StockMovementType"
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 100000
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 255
+
+    StockMovementResponse:
+      type: object
+      required: [id, productId, type, quantity, reason, resultingStock, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/StockMovementType"
+        quantity:
+          type: integer
+        reason:
+          type: string
+        resultingStock:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+
+    StockMovementPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/StockMovementResponse"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+
+    UpdateProductImageRequest:
+      type: object
+      description: Pelo menos um campo. Ausente ou nulo não altera.
+      minProperties: 1
+      properties:
+        altText:
+          type: string
+          minLength: 1
+          maxLength: 150
+        position:
+          type: integer
+          minimum: 1
+          maximum: 8
+        primary:
+          type: boolean
+          description: Só aceita true (a principal deixa de ser ao marcar outra)
+          const: true
+
+    ProductImageResponse:
+      type: object
+      required: [id, altText, position, primary, contentType, sizeBytes, url, urlExpiresAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        altText:
+          type: string
+        position:
+          type: integer
+          minimum: 1
+        primary:
+          type: boolean
+        contentType:
+          type: string
+          enum: [image/jpeg, image/png, image/webp]
+        sizeBytes:
+          type: integer
+          format: int64
+        url:
+          type: string
+          format: uri
+          description: URL pré-assinada de leitura
+        urlExpiresAt:
+          type: string
+          format: date-time
+
+    PageMetadata:
+      type: object
+      required: [number, size, totalElements, totalPages]
+      properties:
+        number:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+
+    ProblemDetail:
+      type: object
+      description: RFC 9457 com extensões do projeto (ADR-008)
+      required: [status, title, code, correlationId, timestamp]
+      properties:
+        type:
+          type: string
+          format: uri
+          default: about:blank
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        code:
+          type: string
+          example: PRODUCT_NOT_FOUND
+        correlationId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        errors:
+          type: array
+          description: Só em VALIDATION_ERROR
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+  responses:
+    BadRequest:
+      description: "VALIDATION_ERROR, INVALID_IMAGE_TYPE, IMAGE_TOO_LARGE ou MALFORMED_REQUEST"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          examples:
+            validation:
+              value:
+                type: about:blank
+                title: Bad Request
+                status: 400
+                detail: Request has invalid fields.
+                code: VALIDATION_ERROR
+                correlationId: 3f1c2a9e-0b7d-4c55-9a1e-2d3f4b5c6d7e
+                timestamp: "2026-10-13T15:00:00Z"
+                errors:
+                  - field: price
+                    message: must be greater than 0
+            invalidImage:
+              value:
+                type: about:blank
+                title: Bad Request
+                status: 400
+                detail: File is not a JPEG, PNG or WebP image.
+                code: INVALID_IMAGE_TYPE
+                correlationId: 3f1c2a9e-0b7d-4c55-9a1e-2d3f4b5c6d7e
+                timestamp: "2026-10-13T15:00:00Z"
+    NotFound:
+      description: "CATEGORY_NOT_FOUND, PRODUCT_NOT_FOUND ou IMAGE_NOT_FOUND"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Conflict:
+      description: "CATEGORY_NAME_ALREADY_EXISTS, SKU_ALREADY_EXISTS, CONCURRENT_MODIFICATION ou DATA_INTEGRITY_VIOLATION"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Unprocessable:
+      description: "CATEGORY_INACTIVE, INSUFFICIENT_STOCK ou IMAGE_LIMIT_EXCEEDED"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          examples:
+            insufficientStock:
+              value:
+                type: about:blank
+                title: Unprocessable Content
+                status: 422
+                detail: Insufficient stock for the requested quantity.
+                code: INSUFFICIENT_STOCK
+                correlationId: 3f1c2a9e-0b7d-4c55-9a1e-2d3f4b5c6d7e
+                timestamp: "2026-10-13T15:00:00Z"
+    StorageUnavailable:
+      description: "IMAGE_STORAGE_UNAVAILABLE (S3 fora do ar, circuito aberto ou timeout)"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"

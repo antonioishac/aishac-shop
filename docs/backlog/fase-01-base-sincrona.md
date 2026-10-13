@@ -68,7 +68,7 @@ Módulo `catalog` do `sales-service` · banco `aishac_sales`
 
 | ID | Tipo | Item | Dono | Status |
 |---|---|---|---|---|
-| F01-030 | FEAT | **Spec: Catálogo** — categorias (1 nível), produtos, estoque, imagens | Ambos | ⬜ |
+| F01-030 | FEAT | **Spec: Catálogo** — categorias (1 nível), produtos, estoque, imagens | Ambos | 🔄 |
 | F01-031 | TEC | Migrations: `categories`, `products` (`CHECK price > 0`, `CHECK stock >= 0`), `product_images` (principal única por produto) e **seed separado** de dados de exemplo | Claude | ⬜ |
 | F01-032 | FEAT | Categorias: criar, listar, atualizar, ativar/desativar | Claude | ⬜ |
 | F01-033 | FEAT | Produtos: criar, buscar, listar paginado (filtros categoria, nome, faixa de preço, ativo; ordenação), atualizar, ativar/desativar | Claude | ⬜ |
