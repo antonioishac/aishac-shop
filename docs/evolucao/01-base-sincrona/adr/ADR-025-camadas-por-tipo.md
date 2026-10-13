@@ -37,5 +37,5 @@ Continuam valendo: um banco por serviço, nenhum import entre serviços, Problem
 ## Consequências
 - **Positivas:** código mais direto, com menos classes e sem mapeamento domínio ↔ JPA; onboarding imediato para quem conhece Spring; testes unitários de service com repository mockado continuam rápidos.
 - **Negativas / custos:** a evolução para eventos (F04) e a extração do catálogo (IF-010) dependem de disciplina nos services, não mais de ports; entidades com `@Setter` exigem que as invariantes fiquem no service (e no banco).
-- **Em aberto:** a organização dos módulos `catalog`, `order` e `payment` do sales-service dentro das camadas (subpacotes por módulo em cada camada ou nomes prefixados) será decidida na spec F01-030. Até lá, vale a regra de que `catalog` não depende de `order` nem de `payment` (ADR-005).
+- **Resolvido no ADR-026:** os módulos `catalog`, `order` e `payment` do sales-service são pacotes com as camadas por tipo dentro.
 - **O que observar:** services crescendo demais (sinal para dividir por caso de uso); regra de negócio vazando para controller ou mapper.

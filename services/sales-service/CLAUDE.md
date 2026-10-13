@@ -2,20 +2,22 @@
 
 Dono dos contextos **Catálogo**, **Pedido** e **Pagamento**. Banco `aishac_sales` (usuário `sales_app`).
 
-## Pacotes (camadas por tipo, ADR-025)
+## Pacotes (ADR-025 + ADR-026)
 
 ```text
 com.aishac.sales/
-├── config/      # Clock, auditoria JPA, OpenAPI, correlação (entrada e RestClient de saída), máscara de logs
-└── exception/   # ErrorCode, CommonErrorCode, GlobalExceptionHandler
+├── config/      # transversal: Clock, auditoria JPA, OpenAPI, correlação (entrada e RestClient de saída), máscara de logs
+├── exception/   # transversal: ErrorCode, CommonErrorCode, GlobalExceptionHandler
+├── catalog/     # categorias, produtos, estoque, imagens (F01-030)
+│   └── controller · dto · entity · exception · mapper · repository · service/impl · specification
+├── order/       # pedido, itens, máquina de estados (F01-040) — mesma estrutura
+└── payment/     # pagamento simulado, Strategy (F01-046) — mesma estrutura
 ```
 
-As demais camadas (`controller`, `dto`, `entity`, `mapper`, `repository`, `service`, `specification`) nascem com as features, como no `customer-service`.
+## Fronteiras entre módulos
 
-## Módulos (catálogo, pedido, pagamento)
-
-- **Em aberto:** como os módulos `catalog`, `order` e `payment` se organizam dentro das camadas será decidido na spec F01-030 (ADR-025).
-- Até lá: `catalog` não depende de `order` nem de `payment`, e não há FK entre tabelas de módulos diferentes (o catálogo poderá ser extraído, IF-010).
+- `catalog` não conhece `order` nem `payment`.
+- `order` usa o catálogo **só pelas interfaces de service** do catálogo (nunca repository, entity ou mapper dele); sem FK entre tabelas de módulos (o catálogo poderá ser extraído, IF-010). O ArchUnit verifica.
 
 ## Transversal
 

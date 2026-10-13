@@ -29,5 +29,6 @@ Decisões de arquitetura da fase. A numeração é contínua entre fases. Para r
 | [ADR-023](ADR-023-logs-json-correlacao-e-mascara.md) | Logs JSON, ID de correlação e máscara de dados pessoais | F01-012 |
 | [ADR-024](ADR-024-estrategia-de-testes-gates-e-ci.md) | Testes, gates de qualidade e CI por serviço | D25 · F01-013 · F01-014 |
 | [ADR-025](ADR-025-camadas-por-tipo.md) | Camadas por tipo (controller, service, repository...) no lugar da hexagonal | Decisão do usuário · substitui ADR-004 e ADR-022 |
+| [ADR-026](ADR-026-modulos-do-sales-service.md) | Módulos do sales-service como pacotes com camadas internas | ADR-025 · F01-030 |
 
 Decisões D01–D26 do registro de concepção (`docs/backlog/README.md`): todas cobertas acima.

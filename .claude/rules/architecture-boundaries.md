@@ -36,8 +36,11 @@ controller ──▶ service ──▶ repository / specification / mapper
 - **DTO** não depende de service, repository nem mapper. Nunca exponha entidade na API.
 - **Mapper** (MapStruct) converte entidade → resposta e copia campos simples de request → entidade. Lógica condicional fica no service.
 
-## Entre módulos do sales-service
-- A organização dos módulos `catalog`, `order` e `payment` dentro das camadas é decidida na spec F01-030 (ver ADR-025). Até lá vale: `catalog` não depende de `order` nem de `payment`; sem FK entre tabelas de módulos diferentes.
+## Entre módulos do sales-service (ADR-026)
+- Cada módulo é um pacote com as camadas dentro: `com.aishac.sales.<modulo>.{controller,dto,entity,exception,mapper,repository,service,specification}`. Só `config/` e `exception/` transversais ficam na raiz.
+- `catalog` não depende de `order` nem de `payment`.
+- Um módulo usa outro **somente pelas interfaces de service** do outro (nunca repository, entity, mapper ou specification alheios), trafegando DTOs ou tipos simples.
+- Sem FK entre tabelas de módulos diferentes.
 
 ## Regras ArchUnit mínimas (`ArchitectureTest` de cada serviço)
 1. Controller não é acessado por ninguém; service só por controller; repository, specification e mapper só por service.
@@ -46,3 +49,4 @@ controller ──▶ service ──▶ repository / specification / mapper
 4. Implementações em `service.impl` não são públicas.
 5. Nenhum campo anotado com `@Autowired`.
 6. Sem ciclos entre pacotes.
+7. sales-service: isolamento entre módulos conforme acima.

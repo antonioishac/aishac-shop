@@ -5,7 +5,7 @@
 | Item do backlog | F01-030 (spec do marco 01.3; implementada por F01-031 a F01-036 e F01-039) |
 | Contexto / serviço | sales-service, módulo `catalog` |
 | Fase | 01-base-sincrona |
-| Status | Rascunho |
+| Status | Aprovada em 2026-10-13 (Portão 1) |
 
 ## 1. Objetivo
 Manter o catálogo do Aishac Shop: categorias, produtos com preço e estoque, e imagens de produto guardadas no S3. O catálogo alimenta a vitrine da loja (F01-062), o painel `/admin` (F01-066) e o módulo de pedidos do próprio sales-service, que lê preço e baixa estoque na criação do pedido (F01-042).
@@ -217,7 +217,188 @@ Contrato completo: [contract.yaml](contract.yaml)
 Todos em ProblemDetail com `code`, `correlationId` e `timestamp` (ADR-008). Valem também os códigos transversais do serviço (`MALFORMED_REQUEST`, `ROUTE_NOT_FOUND`, `METHOD_NOT_ALLOWED`, `DATA_INTEGRITY_VIOLATION`, `INTERNAL_ERROR`).
 
 ## 6. Modelo de dados
-> *Pendente — preenchido pela skill `modelar-dados` e aprovado no Portão 2.*
+
+> **Status:** proposto, aguardando o Portão 2. Banco `aishac_sales` (PostgreSQL 18), dono `sales_app`. Migrations: F01-031.
+
+### Visão geral
+
+```text
+categories 1──N products 1──N stock_movements   (histórico append-only)
+                         1──N product_images     (objeto no S3; banco guarda a chave)
+products ┄┄ order_items.product_id   (módulo order, F01-040: lógico, sem FK — ADR-026)
+```
+
+Todas as tabelas são do módulo `catalog`; as FKs abaixo ficam **dentro** do módulo.
+
+### Tabela `categories`
+
+| Coluna | Tipo | Nulo | Default | Regra/constraint | Origem |
+|---|---|---|---|---|---|
+| `id` | `UUID` | não | `uuidv7()` | `pk_categories` | ADR-007 |
+| `name` | `VARCHAR(80)` | não | — | `ck_categories_name_length` (2 a 80, sem espaços nas pontas); única sem diferenciar maiúsculas (`uk_categories_name_lower`, índice único em `lower(name)`) | RN-01, RN-02 |
+| `description` | `VARCHAR(500)` | sim | — | — | RN-01 |
+| `active` | `BOOLEAN` | não | `true` | — | RN-03 |
+| `version` | `BIGINT` | não | `0` | Lock otimista | CA-09 (por analogia) |
+| `created_at`, `updated_at` | `TIMESTAMPTZ` | não | — | Auditoria | — |
+
+### Tabela `products`
+
+| Coluna | Tipo | Nulo | Default | Regra/constraint | Origem |
+|---|---|---|---|---|---|
+| `id` | `UUID` | não | `uuidv7()` | `pk_products` | ADR-007 |
+| `sku` | `VARCHAR(40)` | não | — | `ck_products_sku_format` (`^[A-Z0-9-]{3,40}$`); `uk_products_sku` | RN-06, CA-07 |
+| `name` | `VARCHAR(150)` | não | — | `ck_products_name_length` (3 a 150, sem espaços nas pontas) | RN-05 |
+| `description` | `VARCHAR(2000)` | sim | — | — | RN-05 |
+| `price` | `NUMERIC(19,2)` | não | — | `ck_products_price_positive` (`> 0`) | RN-07 |
+| `category_id` | `UUID` | não | — | `fk_products_category` → `categories(id)`, `ON DELETE RESTRICT` | RN-08 |
+| `stock_quantity` | `INTEGER` | não | `0` | `ck_products_stock_non_negative` (`>= 0`) | RN-14 |
+| `active` | `BOOLEAN` | não | `true` | — | RN-09 |
+| `version` | `BIGINT` | não | `0` | Lock otimista dos dados cadastrais (não do estoque, ver Concorrência) | RN-10 |
+| `created_at`, `updated_at` | `TIMESTAMPTZ` | não | — | Auditoria | — |
+
+### Tabela `stock_movements`
+
+Histórico **append-only**: nunca é alterado nem excluído (sem `version` e sem `updated_at`).
+
+| Coluna | Tipo | Nulo | Default | Regra/constraint | Origem |
+|---|---|---|---|---|---|
+| `id` | `UUID` | não | `uuidv7()` | `pk_stock_movements` | — |
+| `product_id` | `UUID` | não | — | `fk_stock_movements_product` → `products(id)`, `ON DELETE RESTRICT` | RN-15 |
+| `type` | `VARCHAR(20)` | não | — | `ck_stock_movements_type` (`ENTRY`, `EXIT`); os pedidos acrescentarão tipos por migration nova (F01-041) | RN-13 |
+| `quantity` | `INTEGER` | não | — | `ck_stock_movements_quantity_positive` (`> 0`) | RN-13 |
+| `reason` | `VARCHAR(255)` | não | — | `ck_stock_movements_reason_length` (3 a 255) | RN-13 |
+| `resulting_stock` | `INTEGER` | não | — | `ck_stock_movements_resulting_non_negative` (`>= 0`) | RN-15, CA-15 |
+| `created_at` | `TIMESTAMPTZ` | não | — | — | CA-15 |
+
+### Tabela `product_images`
+
+| Coluna | Tipo | Nulo | Default | Regra/constraint | Origem |
+|---|---|---|---|---|---|
+| `id` | `UUID` | não | `uuidv7()` | `pk_product_images` | — |
+| `product_id` | `UUID` | não | — | `fk_product_images_product` → `products(id)`, `ON DELETE RESTRICT` | RN-16 |
+| `object_key` | `VARCHAR(200)` | não | — | `uk_product_images_object_key`; formato `products/{productId}/{uuid}.{ext}` (chave nova a cada substituição) | RN-18, RN-19 |
+| `content_type` | `VARCHAR(20)` | não | — | `ck_product_images_content_type` (`image/jpeg`, `image/png`, `image/webp`) | RN-16 |
+| `size_bytes` | `BIGINT` | não | — | `ck_product_images_size_positive` (`> 0`; o limite superior é configuração, validado no service) | RN-16 |
+| `alt_text` | `VARCHAR(150)` | não | — | `ck_product_images_alt_text_not_blank` | RN-17 |
+| `position` | `SMALLINT` | não | — | `ck_product_images_position_range` (1 a 8); `uk_product_images_product_position` (**UNIQUE adiável**) | RN-17, CA-20 |
+| `is_primary` | `BOOLEAN` | não | `false` | Uma principal por produto: `uk_product_images_single_primary` (EXCLUDE **adiável**, como o endereço padrão) | RN-17, CA-20, CA-21 |
+| `created_at`, `updated_at` | `TIMESTAMPTZ` | não | — | Auditoria | — |
+
+### Índices e consultas atendidas
+
+| Índice | Consulta que atende |
+|---|---|
+| `uk_categories_name_lower` (único, `lower(name)`) | Unicidade do nome sem diferenciar maiúsculas (CA-02) |
+| `idx_categories_active_name` (`active, name`) | `GET /categories?active=` com ordenação por nome (CA-04) |
+| `uk_products_sku` | Unicidade do SKU (CA-07) |
+| `idx_products_category_id` | Índice da FK; filtro `categoryId` (CA-10) |
+| `idx_products_name_trgm` (GIN, `lower(name) gin_trgm_ops`) | Filtro "nome contém" (CA-10); extensão `pg_trgm` |
+| `idx_products_price` | Filtro de faixa de preço e `sort=price` (CA-10) |
+| `idx_products_created_at` (`created_at DESC`) | Ordenação padrão `createdAt,desc` |
+| `idx_stock_movements_product_created` (`product_id, created_at DESC, id DESC`) | Índice da FK; histórico do mais recente para o mais antigo (CA-15) |
+| `uk_product_images_product_position` (`product_id, position`) | Índice da FK; imagens do produto em ordem de posição |
+
+O filtro `sellable` é `products.active AND categories.active` (junção pela FK indexada); não precisa de índice próprio no volume da fase 01.
+
+### Concorrência
+
+- **Saída de estoque (RN-14, CA-14):** um único comando atômico, `UPDATE products SET stock_quantity = stock_quantity - :qty WHERE id = :id AND stock_quantity >= :qty RETURNING stock_quantity`. Zero linhas → `INSUFFICIENT_STOCK`. A movimentação é gravada na mesma transação com o saldo devolvido.
+- **Estoque fora do lock otimista:** a coluna `stock_quantity` só muda por esses comandos (na entidade, `updatable = false`) e **não incrementa a `version`**. Assim, o `PUT` do produto nunca sobrescreve o estoque, e uma movimentação não invalida a `version` que o admin leu para editar o cadastro (RN-10).
+- **Dados cadastrais (produto e categoria):** `@Version`, como em clientes; `version` desatualizada → `CONCURRENT_MODIFICATION`.
+- **SKU e nome de categoria duplicados:** checagem prévia para a mensagem; garantia pelas UNIQUE, traduzidas pelo nome da constraint.
+- **Imagens (limite de 8, posição e principal):** alterações de imagem travam a linha do produto (`SELECT ... FOR UPDATE`, sem mexer na `version`), o que torna sequenciais as operações no mesmo produto. A **trava não é mantida durante o upload**: o arquivo vai para o S3 antes, e só a gravação no banco acontece com a linha travada. Se o limite estourar ou o banco falhar nesse momento, o objeto recém-enviado é removido (RN-21). UNIQUE de posição e EXCLUDE de principal são **adiáveis**, para trocar posições e principal na mesma transação em qualquer ordem.
+
+### Dados de exemplo (seed)
+
+Migration separada em `db/seed/`, carregada **só no perfil `local`** (`spring.flyway.locations`), com 4 categorias e cerca de 20 produtos com estoque. Sem imagens: o seed não envia arquivos ao S3.
+
+### DDL proposto (não é a migration)
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE TABLE categories (
+    id          UUID         NOT NULL DEFAULT uuidv7(),
+    name        VARCHAR(80)  NOT NULL,
+    description VARCHAR(500),
+    active      BOOLEAN      NOT NULL DEFAULT true,
+    version     BIGINT       NOT NULL DEFAULT 0,
+    created_at  TIMESTAMPTZ  NOT NULL,
+    updated_at  TIMESTAMPTZ  NOT NULL,
+    CONSTRAINT pk_categories PRIMARY KEY (id),
+    CONSTRAINT ck_categories_name_length
+        CHECK (name = btrim(name) AND char_length(name) BETWEEN 2 AND 80)
+);
+CREATE UNIQUE INDEX uk_categories_name_lower ON categories (lower(name));
+CREATE INDEX idx_categories_active_name ON categories (active, name);
+
+CREATE TABLE products (
+    id             UUID          NOT NULL DEFAULT uuidv7(),
+    sku            VARCHAR(40)   NOT NULL,
+    name           VARCHAR(150)  NOT NULL,
+    description    VARCHAR(2000),
+    price          NUMERIC(19,2) NOT NULL,
+    category_id    UUID          NOT NULL,
+    stock_quantity INTEGER       NOT NULL DEFAULT 0,
+    active         BOOLEAN       NOT NULL DEFAULT true,
+    version        BIGINT        NOT NULL DEFAULT 0,
+    created_at     TIMESTAMPTZ   NOT NULL,
+    updated_at     TIMESTAMPTZ   NOT NULL,
+    CONSTRAINT pk_products PRIMARY KEY (id),
+    CONSTRAINT uk_products_sku UNIQUE (sku),
+    CONSTRAINT fk_products_category FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE RESTRICT,
+    CONSTRAINT ck_products_sku_format CHECK (sku ~ '^[A-Z0-9-]{3,40}$'),
+    CONSTRAINT ck_products_name_length CHECK (name = btrim(name) AND char_length(name) BETWEEN 3 AND 150),
+    CONSTRAINT ck_products_price_positive CHECK (price > 0),
+    CONSTRAINT ck_products_stock_non_negative CHECK (stock_quantity >= 0)
+);
+CREATE INDEX idx_products_category_id ON products (category_id);
+CREATE INDEX idx_products_name_trgm ON products USING gin (lower(name) gin_trgm_ops);
+CREATE INDEX idx_products_price ON products (price);
+CREATE INDEX idx_products_created_at ON products (created_at DESC);
+
+CREATE TABLE stock_movements (
+    id              UUID         NOT NULL DEFAULT uuidv7(),
+    product_id      UUID         NOT NULL,
+    type            VARCHAR(20)  NOT NULL,
+    quantity        INTEGER      NOT NULL,
+    reason          VARCHAR(255) NOT NULL,
+    resulting_stock INTEGER      NOT NULL,
+    created_at      TIMESTAMPTZ  NOT NULL,
+    CONSTRAINT pk_stock_movements PRIMARY KEY (id),
+    CONSTRAINT fk_stock_movements_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE RESTRICT,
+    CONSTRAINT ck_stock_movements_type CHECK (type IN ('ENTRY', 'EXIT')),
+    CONSTRAINT ck_stock_movements_quantity_positive CHECK (quantity > 0),
+    CONSTRAINT ck_stock_movements_reason_length CHECK (char_length(btrim(reason)) BETWEEN 3 AND 255),
+    CONSTRAINT ck_stock_movements_resulting_non_negative CHECK (resulting_stock >= 0)
+);
+CREATE INDEX idx_stock_movements_product_created ON stock_movements (product_id, created_at DESC, id DESC);
+
+CREATE TABLE product_images (
+    id           UUID         NOT NULL DEFAULT uuidv7(),
+    product_id   UUID         NOT NULL,
+    object_key   VARCHAR(200) NOT NULL,
+    content_type VARCHAR(20)  NOT NULL,
+    size_bytes   BIGINT       NOT NULL,
+    alt_text     VARCHAR(150) NOT NULL,
+    position     SMALLINT     NOT NULL,
+    is_primary   BOOLEAN      NOT NULL DEFAULT false,
+    created_at   TIMESTAMPTZ  NOT NULL,
+    updated_at   TIMESTAMPTZ  NOT NULL,
+    CONSTRAINT pk_product_images PRIMARY KEY (id),
+    CONSTRAINT fk_product_images_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE RESTRICT,
+    CONSTRAINT uk_product_images_object_key UNIQUE (object_key),
+    CONSTRAINT uk_product_images_product_position UNIQUE (product_id, position) DEFERRABLE INITIALLY DEFERRED,
+    CONSTRAINT uk_product_images_single_primary
+        EXCLUDE USING btree (product_id WITH =) WHERE (is_primary) DEFERRABLE INITIALLY DEFERRED,
+    CONSTRAINT ck_product_images_content_type CHECK (content_type IN ('image/jpeg', 'image/png', 'image/webp')),
+    CONSTRAINT ck_product_images_size_positive CHECK (size_bytes > 0),
+    CONSTRAINT ck_product_images_alt_text_not_blank CHECK (btrim(alt_text) <> ''),
+    CONSTRAINT ck_product_images_position_range CHECK (position BETWEEN 1 AND 8)
+);
+```
+
+Separação prevista nas migrations (F01-031): `V1__create_categories.sql` (com a extensão), `V2__create_products.sql`, `V3__create_stock_movements.sql`, `V4__create_product_images.sql` e o seed em `db/seed/`.
 
 ## 7. Dependências externas
 - **Amazon S3** (LocalStack no perfil `local` e nos testes; AWS no `dev`): **obrigatório** para enviar, substituir e ler imagens; indisponível → `503 IMAGE_STORAGE_UNAVAILABLE`. Listagem e consulta de produtos **não dependem** do S3: com o S3 fora do ar, o produto vem com `primaryImage` = `null` (pergunta 6).
@@ -232,10 +413,16 @@ Todos em ProblemDetail com `code`, `correlationId` e `timestamp` (ADR-008). Vale
 - Busca textual ignorando acentos e busca por relevância.
 - Exclusão física de categoria ou produto.
 
-## 9. Perguntas em aberto
-1. **SKU:** o backlog não cita; proponho incluir (código único, imutável, maiúsculo). Mantém?
-2. **Histórico de estoque (RN-15):** proponho registrar toda movimentação, inclusive o estoque inicial e, depois, as dos pedidos. Atende, ou basta o saldo?
-3. **Limite de imagens:** 8 por produto e 5 MB por arquivo estão bons?
-4. **Texto alternativo obrigatório (RN-17):** proponho obrigatório, por acessibilidade. Concorda?
-5. **Desativar categoria (RN-04):** mantenho os produtos ativos, só não vendáveis. Prefere bloquear a desativação enquanto houver produtos ativos?
-6. **S3 fora do ar na vitrine:** proponho que a listagem e a consulta de produtos **continuem funcionando** com `primaryImage` = `null` (degradação parcial), em vez de falhar a tela. Concorda?
+## 9. Decisões do Portão 1 (2026-10-13)
+As perguntas em aberto foram respondidas com as propostas da spec:
+
+| # | Pergunta | Decisão |
+|---|---|---|
+| 1 | SKU | Incluído: único, imutável, guardado em maiúsculas (RN-06) |
+| 2 | Histórico de estoque | Toda movimentação registrada, inclusive estoque inicial e, depois, as dos pedidos (RN-15) |
+| 3 | Limites de imagem | 8 por produto, 5 MB por arquivo (configurável) (RN-16) |
+| 4 | Texto alternativo | Obrigatório (RN-17) |
+| 5 | Desativar categoria com produtos | Permitido; os produtos ficam ativos e deixam de ser vendáveis (RN-04) |
+| 6 | S3 fora do ar na vitrine | Listagem e consulta funcionam com `primaryImage` nulo (degradação parcial) |
+
+Decisão técnica tomada junto: módulos do sales-service como pacotes com camadas internas (ADR-026).
