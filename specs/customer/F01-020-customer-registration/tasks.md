@@ -37,6 +37,6 @@ Também cobrem a feature: `ArchitectureTest` (camadas), `GlobalExceptionHandlerT
 - [x] Reestruturação para camadas por tipo (ADR-025), a pedido do usuário
 - [x] `./mvnw verify` verde
 - [x] Coleção `.http` atualizada
-- [ ] Revisão `code-reviewer`: APROVADO
+- [x] Revisão `code-reviewer`: APROVADO (2026-10-13, após duas rodadas de correção)
 - [ ] Diagrama/ADR atualizados (ADR-025 feito; páginas de componentes do diagrama pendentes)
 - [ ] Item marcado ✅ no backlog

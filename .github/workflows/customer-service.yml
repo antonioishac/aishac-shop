@@ -6,12 +6,14 @@ on:
     paths:
       - services/customer-service/**
       - config-repo/**
+      - specs/customer/**
       - .github/workflows/customer-service.yml
       - .github/workflows/_java-service.yml
   pull_request:
     paths:
       - services/customer-service/**
       - config-repo/**
+      - specs/customer/**
       - .github/workflows/customer-service.yml
       - .github/workflows/_java-service.yml
 
