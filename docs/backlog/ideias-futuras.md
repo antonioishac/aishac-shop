@@ -35,6 +35,7 @@ Quando uma ideia ganhar fase, ela recebe ID definitivo no arquivo da trilha e é
 | IF-023 | Infraestrutura local com Kubernetes (kind/k3d) antes do EKS | Estudo sem custo |
 | IF-024 | Alternativa ao LocalStack sem conta (ex.: Floci) | Avaliar se o token virar problema |
 | IF-025 | Busca de cliente por CPF/e-mail sem dado pessoal na URL (ex.: `POST /customers/search`) | Hoje `GET /customers?cpf=&email=` pode deixar CPF e e-mail em logs de acesso e de proxy. Avaliar com o Gateway (F02) |
+| IF-026 | Limpeza de objetos órfãos do S3: job de reconciliação banco × bucket (apaga objetos de `products/` sem registro há mais de 1 dia) | Na F01 os órfãos são aceitos e observados pela métrica `aishac.storage.orphaned.objects` (ADR-010). Avaliar com eventos (F04): exclusão confirmada → remoção com retry |
 
 ## Qualidade e processo
 

@@ -15,6 +15,7 @@ import com.aishac.sales.catalog.service.ProductImageService;
 import com.aishac.sales.catalog.service.ProductImageStorage;
 import com.aishac.sales.exception.BusinessException;
 import com.aishac.sales.exception.NotFoundException;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Collection;
@@ -43,12 +44,16 @@ class ProductImageServiceImpl implements ProductImageService {
 
     private static final int MAX_POSITION = 8;
 
+    /** Órfãos são limitação aceita da fase 01 (ADR-010, IF-026): a métrica mostra o volume para observar. */
+    static final String ORPHANED_OBJECTS = "aishac.storage.orphaned.objects";
+
     private final ProductRepository productRepository;
     private final ProductImageRepository productImageRepository;
     private final ProductImageStorage storage;
     private final StorageProperties properties;
     private final CatalogMapper catalogMapper;
     private final TransactionTemplate transactionTemplate;
+    private final MeterRegistry meterRegistry;
 
     @Override
     public ProductImageResponse upload(UUID productId, MultipartFile file, String altText) {
@@ -244,12 +249,13 @@ class ProductImageServiceImpl implements ProductImageService {
         return catalogMapper.toResponse(image, presigned.url(), presigned.expiresAt());
     }
 
-    /** Falha aqui deixa um objeto órfão, removido depois pelo ciclo de vida do bucket (RN-20). */
+    /** Falha aqui deixa um objeto órfão (RN-20): fica no log de aviso e na métrica, sem limpeza automática. */
     private void deleteQuietly(String objectKey) {
         try {
             storage.delete(objectKey);
         } catch (RuntimeException e) {
             log.warn("Image object left orphaned in storage: {}", objectKey);
+            meterRegistry.counter(ORPHANED_OBJECTS).increment();
         }
     }
 

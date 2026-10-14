@@ -49,6 +49,6 @@ Também cobrem a feature: `ArchitectureTest` (camadas dentro dos módulos e fron
 |---|---|---|
 | 1 | Tempo limite na trava de imagens (`findForImageChange`): hoje espera sem limite; no PostgreSQL exige `SET LOCAL lock_timeout`, a validar com o Hibernate 7 | Antes do F01-042 (pedido trava produtos) |
 | 2 | Ordenação de produtos aceita qualquer propriedade da entidade; RN-11 prevê só `name`, `price` e `createdAt` (lista permitida no service) | Próxima mudança no catálogo |
-| 3 | Ciclo de vida do bucket deve expirar **só órfãos** (tag `orphan=true` no `deleteQuietly` ou prefixo próprio), nunca imagens válidas | F01-037 |
+| 3 | ~~Ciclo de vida só para órfãos~~ Decidido em 2026-10-13: órfãos aceitos (log + métrica `aishac.storage.orphaned.objects`), sem expiração de objetos no bucket; limpeza na IF-026 | ✅ F01-037 |
 | 4 | Teto para `stock_quantity` (hoje uma entrada muito grande estoura o `INTEGER` → 409) | Próxima mudança no catálogo |
 | 5 | `UpdateProductImageRequest.isRequest()` nomeia o erro de corpo vazio pelo nome do método; alternativa: mapear no handler | Opcional |

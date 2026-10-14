@@ -46,7 +46,7 @@ Manter o catálogo do Aishac Shop: categorias, produtos com preço e estoque, e 
 | RN-17 | Cada imagem tem **texto alternativo** (acessibilidade; até 150 caracteres, obrigatório), **posição** de exibição e a marcação de **principal**. A **primeira** imagem enviada vira principal; há no máximo **uma** principal por produto. |
 | RN-18 | O arquivo fica no **S3, em bucket privado**; o banco guarda só a **chave** do objeto. A leitura devolve uma **URL pré-assinada** que expira (padrão 15 minutos, configurável) (ADR-010). |
 | RN-19 | **Substituir** o arquivo grava um objeto com **chave nova**, atualiza o banco e só então remove o objeto antigo. A imagem mantém id, texto alternativo, posição e marcação de principal. |
-| RN-20 | **Excluir** remove o registro do banco e depois o objeto do S3. Se a exclusão no S3 falhar, a imagem continua excluída para a API e o objeto órfão é removido depois pela regra de ciclo de vida do bucket. Ao excluir a principal, a próxima pela posição vira principal. |
+| RN-20 | **Excluir** remove o registro do banco e depois o objeto do S3. Se a exclusão no S3 falhar, a imagem continua excluída para a API e o objeto fica órfão no bucket: limitação aceita da fase 01, registrada em log de aviso e na métrica `aishac.storage.orphaned.objects`; a limpeza é a ideia IF-026. Ao excluir a principal, a próxima pela posição vira principal. |
 | RN-21 | Se o banco falhar depois do upload, o objeto recém-enviado é removido (compensação): nunca fica arquivo sem registro por erro da API. |
 | RN-22 | Se o S3 estiver indisponível, upload e substituição respondem "armazenamento indisponível" (503), sem alterar o banco (Circuit Breaker do Resilience4j, ADR-009). A URL pré-assinada é calculada localmente, sem chamar o S3: só falha por erro de configuração ou de credenciais, e então a leitura de imagens também responde 503. |
 
@@ -403,7 +403,7 @@ Separação prevista nas migrations (F01-031): `V1__create_categories.sql` (com 
 ## 7. Dependências externas
 - **Amazon S3** (LocalStack no perfil `local` e nos testes; AWS no `dev`): **obrigatório** para enviar e substituir imagens; indisponível → `503 IMAGE_STORAGE_UNAVAILABLE`. A URL pré-assinada é calculada sem chamar o S3, então a leitura continua respondendo com o S3 fora do ar (o link só funciona quando ele voltar). Listagem e consulta de produtos **não dependem** do S3: se a URL não puder ser gerada, o produto vem com `primaryImage` = `null` (pergunta 6).
 - Configuração nova por perfil: bucket, região, endpoint (LocalStack), validade da URL pré-assinada, tamanho máximo de imagem (skill `configurar-ambiente`).
-- Infra do `dev`: script AWS CLI do bucket privado com ciclo de vida de 30 dias e política IAM (F01-037, executado por você).
+- Infra do `dev`: script AWS CLI do bucket privado (ciclo de vida só para uploads multipart incompletos; sem expiração de objetos, que apagaria imagens válidas) e política IAM (F01-037, executado por você).
 - Nenhuma chamada a outros serviços. O módulo `order` (F01-040) vai ler preço, vendabilidade e baixar estoque pelo próprio sales-service, em processo.
 
 ## 8. Fora de escopo

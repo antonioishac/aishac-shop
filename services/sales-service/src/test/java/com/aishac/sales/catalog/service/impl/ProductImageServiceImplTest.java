@@ -27,6 +27,7 @@ import com.aishac.sales.catalog.repository.ProductRepository;
 import com.aishac.sales.catalog.service.ProductImageStorage;
 import com.aishac.sales.exception.BusinessException;
 import com.aishac.sales.exception.ErrorCode;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +54,7 @@ class ProductImageServiceImplTest {
     private final InMemoryProductImageStorage storage = new InMemoryProductImageStorage();
     private final Product product = CatalogFixtures.product(CatalogFixtures.category(true), 1);
     private final List<ProductImage> images = new ArrayList<>();
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
 
     private ProductImageServiceImpl service(ProductImageStorage storage) {
         return new ProductImageServiceImpl(
@@ -61,7 +63,8 @@ class ProductImageServiceImplTest {
                 storage,
                 PROPERTIES,
                 Mappers.getMapper(CatalogMapper.class),
-                new TransactionTemplate(mock(PlatformTransactionManager.class)));
+                new TransactionTemplate(mock(PlatformTransactionManager.class)),
+                meterRegistry);
     }
 
     private ProductImageServiceImpl storedProduct() {
@@ -234,6 +237,10 @@ class ProductImageServiceImplTest {
         verify(imageRepository).delete(a);
         verify(failing).delete(a.getObjectKey());
         assertThat(b.isPrimaryImage()).isTrue();
+        assertThat(meterRegistry
+                        .counter(ProductImageServiceImpl.ORPHANED_OBJECTS)
+                        .count())
+                .isEqualTo(1);
     }
 
     @Test

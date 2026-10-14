@@ -75,7 +75,7 @@ Módulo `catalog` do `sales-service` · banco `aishac_sales`
 | F01-034 | FEAT | Estoque: ajuste manual (entrada/saída) pelo admin, com baixa **atômica** | Claude | ✅ |
 | F01-035 | FEAT | **Imagens**: inserir (multipart), listar, buscar, substituir (chave nova), atualizar metadados (principal, ordem, alt), **excluir** (banco → S3). Validação por magic number, limite de tamanho configurável, URL pré-assinada | Claude | ✅ |
 | F01-036 | TEC | Port `ProductImageStorage` + adapter S3 (AWS SDK v2, cadeia padrão de credenciais) + Resilience4j + testes com LocalStack via Testcontainers | Claude | ✅ |
-| F01-037 | TEC | Script AWS CLI em `infra/aws/` para o perfil `dev`: bucket privado (Block Public Access), regra de ciclo de vida (30 dias), política IAM restrita ao bucket. **Você executa.** | Claude | ⬜ |
+| F01-037 | TEC | Script AWS CLI em `infra/aws/` para o perfil `dev`: bucket privado (Block Public Access), ciclo de vida só para uploads multipart incompletos (sem expiração de objetos: apagaria imagens válidas; órfãos → IF-026), política IAM restrita ao bucket. **Você executa.** | Claude | 🔄 |
 | F01-038 | ESTUDO | Configurar **alerta de orçamento** (AWS Budgets) e usuário IAM sem root antes de qualquer uso da AWS | Você | ⬜ |
 | F01-039 | TEC | Catálogo de erros do módulo (`PRODUCT_NOT_FOUND`, `INSUFFICIENT_STOCK`, `INVALID_IMAGE_TYPE`, …) | Claude | ✅ |
 
