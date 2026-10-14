@@ -4,7 +4,7 @@
 # (ex.: "cd infra && docker compose up").
 # Bloqueia:
 #   1. docker / docker compose / podman (o usuário controla os containers);
-#   2. terraform apply / destroy (infra paga é decisão do usuário);
+#   2. terraform apply / destroy, AWS CLI e scripts de infra/aws (infra paga é decisão do usuário);
 #   3. git push --force;
 #   4. leitura de arquivos .env por comando;
 #   5. git commit com possíveis segredos no conteúdo staged.
@@ -27,6 +27,8 @@ while IFS= read -r seg; do
   case "$first" in
     docker|docker-compose|podman|podman-compose|nerdctl)
       block "o Claude não executa '$first'. Informe o comando ao usuário para que ele execute (premissa P1)." ;;
+    aws)
+      block "o Claude não executa a AWS CLI (conta real, custo). Informe o comando ao usuário (premissa P3)." ;;
     terraform|tofu)
       if grep -Eq '(^|[[:space:]])(apply|destroy)([[:space:]]|$)' <<<"$seg"; then
         block "'terraform apply/destroy' é executado apenas pelo usuário (premissa P3). Use 'terraform plan'."
@@ -39,8 +41,15 @@ while IFS= read -r seg; do
       # Tarefas do Taskfile que executam Docker por dentro (infra:*, apps:*).
       if grep -Eq '(^|[[:space:]])(infra|apps):' <<<"$seg"; then
         block "'$first infra:*/apps:*' executa Docker. Informe o comando ao usuário (premissa P1)."
+      fi
+      if grep -Eq '(^|[[:space:]])aws:' <<<"$seg"; then
+        block "'$first aws:*' altera a conta AWS real. Informe o comando ao usuário (premissa P3)."
       fi ;;
   esac
+  # Scripts de infra/aws executados diretamente ou por bash/sh (ler e editar continua permitido).
+  if grep -Eq '^(bash|sh|\./|\.\./|/)?[^[:space:]]*infra/aws/[^[:space:]]+\.sh' <<<"$seg"      || grep -Eq '^(bash|sh)[[:space:]]+[^[:space:]]*infra/aws/' <<<"$seg"; then
+    block "scripts de infra/aws alteram a conta AWS real e são executados apenas pelo usuário (premissa P3)."
+  fi
 done <<<"$segments"
 
 # 4. Leitura de .env por comandos (cat, less, grep, source...), exceto .env.example

@@ -1,7 +1,7 @@
 # Comandos do dia a dia. Requer Task (https://taskfile.dev): winget install Task.Task
 # Liste tudo com: task --list
 #
-# Tarefas infra:* e apps:* executam Docker: só o usuário roda (premissa P1; bloqueadas para o Claude).
+# Tarefas infra:* e apps:* executam Docker (premissa P1) e aws:* alteram a conta AWS real (premissa P3): só o usuário roda; bloqueadas para o Claude.
 version: "3"
 
 vars:
@@ -103,3 +103,14 @@ tasks:
     desc: Derruba infraestrutura e aplicações
     dir: infra/docker
     cmds: ["{{.COMPOSE_APPS}} down"]
+
+  # --- AWS real (perfil dev) — executado apenas pelo usuário (premissa P3) ---------
+  # Variáveis: AWS_PROFILE, PRODUCT_IMAGES_BUCKET e, opcional, AWS_IAM_USER (ver infra/aws/README.md).
+
+  aws:bucket:
+    desc: Cria ou reaplica o bucket de imagens do dev e a política IAM do sales-service (F01-037)
+    cmds: ["bash ./infra/aws/dev/product-images-bucket.sh"]
+
+  aws:bucket:remove:
+    desc: Apaga o bucket de imagens do dev (com todos os objetos) e a política IAM
+    cmds: ["bash ./infra/aws/dev/product-images-bucket-remove.sh"]
