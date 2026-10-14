@@ -12,7 +12,7 @@ Decisões de arquitetura da fase. A numeração é contínua entre fases. Para r
 | [ADR-006](ADR-006-fase-01-100-por-cento-sincrona.md) | Fase 01 100% síncrona, sem Gateway nem autenticação | D06 · D24 |
 | [ADR-007](ADR-007-banco-por-servico-e-convencoes.md) | Um banco por serviço e convenções de modelagem | D07 · D08 |
 | [ADR-008](ADR-008-erros-em-problem-detail.md) | Erros em ProblemDetail com catálogo de códigos | D09 |
-| [ADR-009](ADR-009-resilience4j-vs-retry-nativo-spring-7.md) | Resilience4j, e não o retry nativo do Spring 7 | D10 |
+| [ADR-009](ADR-009-resilience4j-vs-retry-nativo-spring-7.md) | Resilience4j, e não o retry nativo do Spring 7 (emenda de 2026-10-13: no S3, só o Circuit Breaker; retry e timeouts do AWS SDK) | D10 · F01-030 |
 | [ADR-010](ADR-010-imagens-de-produto-no-s3.md) | Imagens no S3 com upload pelo backend | D11 |
 | [ADR-011](ADR-011-localstack-local-e-aws-real-no-dev.md) | LocalStack no local; AWS real no dev | D12 |
 | [ADR-012](ADR-012-configuracao-externa-com-config-server.md) | Config Server próprio, backend native e git | D13 |

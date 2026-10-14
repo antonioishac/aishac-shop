@@ -29,3 +29,23 @@ Quando o circuito abre ou o limite estoura, a resposta é **`503` em ProblemDeta
 - **Positivas:** falhas da dependência são contidas e observáveis (estados do circuito no Actuator, estudo F01-050).
 - **Negativas / custos:** mais configuração por cliente HTTP; risco de combinações ruins (retry dentro do time limiter, retry em operação não idempotente).
 - **O que observar:** circuito abrindo com frequência; retries multiplicando a latência. Detalhe: o config client do Spring Cloud ainda usa o `spring-retry` para buscar a configuração na subida (dependência incluída só para isso).
+
+## Emenda — 2026-10-13: exceção para o S3 (F01-030)
+
+A decisão acima continua valendo para as chamadas HTTP (sales → customer, BFF → serviços). **Nas chamadas ao S3, o Resilience4j entra só com o Circuit Breaker.** Retry e timeouts ficam com o próprio AWS SDK v2.
+
+**Motivo:** o `S3Client` do SDK já faz retry com backoff (estratégia padrão) e tem timeouts próprios. Somar o Retry do Resilience4j por cima multiplicaria as tentativas (cada tentativa do Resilience4j dispararia as tentativas do SDK) e o TimeLimiter duplicaria um teto que o SDK já aplica, com o risco de cortar uma chamada no meio de um retry interno.
+
+Como ficou no código (`sales-service`, módulo `catalog`):
+
+| Mecanismo | Onde | Configuração |
+|---|---|---|
+| Retry com backoff | AWS SDK (`S3Client`, estratégia padrão) | Sem ajuste |
+| Timeout por tentativa | `StorageConfiguration` (`apiCallAttemptTimeout`) | 10 s (folga para um upload de 5 MB em rede lenta) |
+| Timeout total da chamada, incluindo retries | `StorageConfiguration` (`apiCallTimeout`) | 30 s |
+| Circuit Breaker | `S3ProductImageStorage` (`@CircuitBreaker(name = "s3")` em `put` e `delete`) | `config-repo/sales-service.properties` (`resilience4j.circuitbreaker.instances.s3.*`) |
+
+- Falha do SDK ou circuito aberto → fallback lança `BusinessException(IMAGE_STORAGE_UNAVAILABLE)` → **`503` em ProblemDetail**, como na decisão original.
+- A URL pré-assinada é calculada localmente pelo `S3Presigner` (sem chamada de rede), por isso fica fora do Circuit Breaker; erro do SDK nela também vira `IMAGE_STORAGE_UNAVAILABLE`.
+- A rule `storage` foi alinhada a esta emenda.
+- **O que observar:** com o retry do SDK, uma chamada lenta pode levar até 30 s antes de o Circuit Breaker contar a falha; o limite de chamada lenta do circuito (`slow-call-duration-threshold`) ajuda a abrir antes disso.

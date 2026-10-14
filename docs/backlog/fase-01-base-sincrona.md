@@ -69,15 +69,15 @@ Módulo `catalog` do `sales-service` · banco `aishac_sales`
 | ID | Tipo | Item | Dono | Status |
 |---|---|---|---|---|
 | F01-030 | FEAT | **Spec: Catálogo** — categorias (1 nível), produtos, estoque, imagens | Ambos | 🔄 |
-| F01-031 | TEC | Migrations: `categories`, `products` (`CHECK price > 0`, `CHECK stock >= 0`), `product_images` (principal única por produto) e **seed separado** de dados de exemplo | Claude | ⬜ |
-| F01-032 | FEAT | Categorias: criar, listar, atualizar, ativar/desativar | Claude | ⬜ |
-| F01-033 | FEAT | Produtos: criar, buscar, listar paginado (filtros categoria, nome, faixa de preço, ativo; ordenação), atualizar, ativar/desativar | Claude | ⬜ |
-| F01-034 | FEAT | Estoque: ajuste manual (entrada/saída) pelo admin, com baixa **atômica** | Claude | ⬜ |
-| F01-035 | FEAT | **Imagens**: inserir (multipart), listar, buscar, substituir (chave nova), atualizar metadados (principal, ordem, alt), **excluir** (banco → S3). Validação por magic number, limite de tamanho configurável, URL pré-assinada | Claude | ⬜ |
-| F01-036 | TEC | Port `ProductImageStorage` + adapter S3 (AWS SDK v2, cadeia padrão de credenciais) + Resilience4j + testes com LocalStack via Testcontainers | Claude | ⬜ |
+| F01-031 | TEC | Migrations: `categories`, `products` (`CHECK price > 0`, `CHECK stock >= 0`), `product_images` (principal única por produto) e **seed separado** de dados de exemplo | Claude | ✅ |
+| F01-032 | FEAT | Categorias: criar, listar, atualizar, ativar/desativar | Claude | ✅ |
+| F01-033 | FEAT | Produtos: criar, buscar, listar paginado (filtros categoria, nome, faixa de preço, ativo; ordenação), atualizar, ativar/desativar | Claude | ✅ |
+| F01-034 | FEAT | Estoque: ajuste manual (entrada/saída) pelo admin, com baixa **atômica** | Claude | ✅ |
+| F01-035 | FEAT | **Imagens**: inserir (multipart), listar, buscar, substituir (chave nova), atualizar metadados (principal, ordem, alt), **excluir** (banco → S3). Validação por magic number, limite de tamanho configurável, URL pré-assinada | Claude | ✅ |
+| F01-036 | TEC | Port `ProductImageStorage` + adapter S3 (AWS SDK v2, cadeia padrão de credenciais) + Resilience4j + testes com LocalStack via Testcontainers | Claude | ✅ |
 | F01-037 | TEC | Script AWS CLI em `infra/aws/` para o perfil `dev`: bucket privado (Block Public Access), regra de ciclo de vida (30 dias), política IAM restrita ao bucket. **Você executa.** | Claude | ⬜ |
 | F01-038 | ESTUDO | Configurar **alerta de orçamento** (AWS Budgets) e usuário IAM sem root antes de qualquer uso da AWS | Você | ⬜ |
-| F01-039 | TEC | Catálogo de erros do módulo (`PRODUCT_NOT_FOUND`, `INSUFFICIENT_STOCK`, `INVALID_IMAGE_TYPE`, …) | Claude | ⬜ |
+| F01-039 | TEC | Catálogo de erros do módulo (`PRODUCT_NOT_FOUND`, `INSUFFICIENT_STOCK`, `INVALID_IMAGE_TYPE`, …) | Claude | ✅ |
 
 ---
 
