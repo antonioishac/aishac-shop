@@ -5,7 +5,7 @@
 | Item do backlog | F01-030 (spec do marco 01.3; implementada por F01-031 a F01-036 e F01-039) |
 | Contexto / serviço | sales-service, módulo `catalog` |
 | Fase | 01-base-sincrona |
-| Status | Aprovada em 2026-10-13 (Portão 1) |
+| Status | Aprovada em 2026-10-13 (Portão 1); ajustes pós-implementação ratificados em 2026-10-13 (§10) |
 
 ## 1. Objetivo
 Manter o catálogo do Aishac Shop: categorias, produtos com preço e estoque, e imagens de produto guardadas no S3. O catálogo alimenta a vitrine da loja (F01-062), o painel `/admin` (F01-066) e o módulo de pedidos do próprio sales-service, que lê preço e baixa estoque na criação do pedido (F01-042).
@@ -426,3 +426,12 @@ As perguntas em aberto foram respondidas com as propostas da spec:
 | 6 | S3 fora do ar na vitrine | Listagem e consulta funcionam com `primaryImage` nulo (degradação parcial) |
 
 Decisão técnica tomada junto: módulos do sales-service como pacotes com camadas internas (ADR-026).
+
+## 10. Ajustes pós-implementação (ratificados em 2026-10-13)
+Ajustes de redação feitos depois do Portão 1, durante a revisão de código, e aprovados por você em 2026-10-13. Nenhuma regra de negócio mudou; os textos passaram a descrever o comportamento real.
+
+| Onde | Ajuste |
+|---|---|
+| RN-20, §7 | Objetos órfãos (exclusão no S3 que falhou) ficam no bucket como limitação aceita da fase 01, com log e métrica `aishac.storage.orphaned.objects`; sem expiração de objetos no bucket (apagaria imagens válidas); limpeza na IF-026 |
+| RN-22, §7, contrato | A URL pré-assinada é calculada sem chamar o S3: com o S3 fora do ar, só upload e substituição respondem 503; `primaryImage` nulo e 503 na leitura só com erro de configuração ou credenciais |
+| §5, contrato | Código transversal `FILE_TOO_LARGE` (400) para corpo multipart acima do limite do servidor (10 MB) |

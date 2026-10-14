@@ -42,7 +42,7 @@ Também cobrem a feature: `ArchitectureTest` (camadas dentro dos módulos e fron
 - [x] Coleção `.http` atualizada
 - [x] Revisão `code-reviewer`: APROVADO (2026-10-13, 2ª rodada; na 1ª, B1, B2, I2, I3, I4 e as sugestões 2, 4, 5, 6 e 8 foram corrigidos)
 - [x] Diagrama/ADR atualizados (ADR-008, ADR-009 com emenda do S3, ADR-010, ADR-026; páginas Componentes — sales-service, Sequência — Imagens, ER — aishac_sales e Deployment — Local)
-- [x] F01-031 a F01-036 e F01-039 marcados ✅ no backlog; F01-030 fica 🔄 até a ratificação dos ajustes da spec
+- [x] F01-031 a F01-036 e F01-039 marcados ✅ no backlog; F01-030 ✅ após a ratificação dos ajustes da spec (§10)
 
 ## Pendências registradas (fora do escopo desta entrega)
 | # | Pendência | Quando |

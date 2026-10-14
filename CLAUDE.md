@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 E-commerce de estudo, construído de ponta a ponta como projeto de referência.
 Backlog e decisões: @docs/backlog/README.md
 
-**Estado atual:** marco 01.1 concluído (exceto itens do usuário); marco 01.2 concluído: a feature de clientes (F01-020 a F01-026) está pronta no `customer-service`, com contrato produtor do `order-data` para o sales-service; próximo é o marco 01.3 (catálogo, a partir da spec F01-030). O `sales-service` tem só `config/` e `exception/`. `web-bff` e frontend ainda não foram gerados. Projetos novos são gerados pelo Spring Initializr (Boot 4.1.x, Java 25), com Spotless (Palantir Java Format) e Failsafe no pom, porque o hook `on-stop` roda `spotless:apply`.
+**Estado atual:** marco 01.1 concluído (exceto itens do usuário); marco 01.2 concluído: a feature de clientes (F01-020 a F01-026) está pronta no `customer-service`, com contrato produtor do `order-data` para o sales-service; marco 01.3 concluído do lado do Claude: o catálogo (F01-030 a F01-036, F01-039) está pronto no módulo `catalog` do `sales-service`, e o script do bucket do `dev` (F01-037) aguarda execução pelo usuário; próximo é o marco 01.4 (vendas, a partir da spec F01-040). `web-bff` e frontend ainda não foram gerados. Projetos novos são gerados pelo Spring Initializr (Boot 4.1.x, Java 25), com Spotless (Palantir Java Format) e Failsafe no pom, porque o hook `on-stop` roda `spotless:apply`.
 
 ## Onde estão as instruções
 
