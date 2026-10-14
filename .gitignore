@@ -4,6 +4,7 @@
 !.env.example
 CLAUDE.local.md
 http-client.private.env.json
+http/images/
 .claude/settings.local.json
 
 # Java / Maven

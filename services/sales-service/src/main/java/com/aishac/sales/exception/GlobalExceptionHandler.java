@@ -3,9 +3,11 @@ package com.aishac.sales.exception;
 import com.aishac.sales.exception.ProblemDetailFactory.FieldError;
 import java.time.Clock;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.TypeMismatchException;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.dao.PessimisticLockingFailureException;
@@ -16,12 +18,16 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -74,7 +80,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<Object> handleDataIntegrity(DataIntegrityViolationException ex, WebRequest request) {
         String constraint = ConstraintViolations.constraintName(ex).orElse("unknown");
         ProblemDetail problem = ConstraintViolations.isCheckConstraint(constraint)
-                ? ProblemDetailFactory.validation(List.of(new FieldError(constraint, "violates a database rule")))
+                ? ProblemDetailFactory.validation(
+                        List.of(new FieldError(ConstraintViolations.apiField(constraint), "violates a database rule")))
                 : ProblemDetailFactory.build(
                         CommonErrorCode.DATA_INTEGRITY_VIOLATION,
                         CommonErrorCode.DATA_INTEGRITY_VIOLATION.defaultMessage());
@@ -88,6 +95,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = ProblemDetailFactory.validation(
                 List.of(new FieldError("sort", "unknown property: " + ex.getPropertyName())));
         return handleExceptionInternal(ex, problem, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+    }
+
+    /** Banco fora do ar ou sem conexão disponível: dependência indisponível (503), não erro interno. */
+    @ExceptionHandler({CannotCreateTransactionException.class, DataAccessResourceFailureException.class})
+    public ResponseEntity<Object> handleDatabaseUnavailable(Exception ex, WebRequest request) {
+        ProblemDetail problem = ProblemDetailFactory.build(
+                CommonErrorCode.SERVICE_UNAVAILABLE, CommonErrorCode.SERVICE_UNAVAILABLE.defaultMessage());
+        return handleExceptionInternal(ex, problem, new HttpHeaders(), HttpStatus.SERVICE_UNAVAILABLE, request);
     }
 
     @ExceptionHandler(Exception.class)
@@ -129,6 +144,39 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problem, headers, HttpStatus.BAD_REQUEST, request);
     }
 
+    /** Parâmetro obrigatório ausente (inclusive campo de texto em {@code multipart/form-data}). */
+    @Override
+    protected ResponseEntity<Object> handleMissingServletRequestParameter(
+            MissingServletRequestParameterException ex,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            WebRequest request) {
+        ProblemDetail problem =
+                ProblemDetailFactory.validation(List.of(new FieldError(ex.getParameterName(), "is required")));
+        return handleExceptionInternal(ex, problem, headers, HttpStatus.BAD_REQUEST, request);
+    }
+
+    /** Parte obrigatória ausente em {@code multipart/form-data} (ex.: o arquivo da imagem). */
+    @Override
+    protected ResponseEntity<Object> handleMissingServletRequestPart(
+            MissingServletRequestPartException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        ProblemDetail problem =
+                ProblemDetailFactory.validation(List.of(new FieldError(ex.getRequestPartName(), "is required")));
+        return handleExceptionInternal(ex, problem, headers, HttpStatus.BAD_REQUEST, request);
+    }
+
+    /**
+     * Arquivo acima do limite do multipart (barrado antes do controller). Abaixo dele, quem decide é o limite da
+     * aplicação ({@code IMAGE_TOO_LARGE}, no service do catálogo).
+     */
+    @Override
+    protected ResponseEntity<Object> handleMaxUploadSizeExceededException(
+            MaxUploadSizeExceededException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        ProblemDetail problem = ProblemDetailFactory.build(
+                CommonErrorCode.FILE_TOO_LARGE, CommonErrorCode.FILE_TOO_LARGE.defaultMessage());
+        return handleExceptionInternal(ex, problem, headers, HttpStatus.BAD_REQUEST, request);
+    }
+
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(
             HttpMessageNotReadableException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
@@ -154,15 +202,33 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     /**
-     * Mensagem segura para log: violações de integridade trazem o SQL e a linha inteira (nome, telefone, endereço),
-     * então só o nome da constraint é registrado.
+     * Mensagem segura para log. Só as mensagens do próprio catálogo vão inteiras; as do framework e do banco podem
+     * trazer o valor rejeitado (CPF mal formatado, nome, telefone) ou a linha inteira do SQL, então delas sai apenas
+     * o nome dos campos com a constraint violada, o nome da constraint do banco ou o tipo da exceção.
      */
     private static String safeMessage(Exception ex) {
-        if (ex instanceof DataIntegrityViolationException integrity) {
-            return "constraint "
-                    + ConstraintViolations.constraintName(integrity).orElse("unknown");
-        }
-        return ex.getMessage();
+        return switch (ex) {
+            case BusinessException business -> business.getMessage();
+            case NotFoundException notFound -> notFound.getMessage();
+            case DataIntegrityViolationException integrity ->
+                "constraint " + ConstraintViolations.constraintName(integrity).orElse("unknown");
+            case MethodArgumentNotValidException invalid ->
+                invalid.getBindingResult().getFieldErrors().stream()
+                        .map(error -> error.getField() + ":" + error.getCode())
+                        .collect(Collectors.joining(", ", "fields [", "]"));
+            case HandlerMethodValidationException invalid ->
+                invalid.getParameterValidationResults().stream()
+                        .flatMap(result -> result.getResolvableErrors().stream()
+                                .map(error -> result.getMethodParameter().getParameterName() + ":"
+                                        + lastCode(error.getCodes())))
+                        .collect(Collectors.joining(", ", "parameters [", "]"));
+            default -> ex.getClass().getSimpleName();
+        };
+    }
+
+    /** O código mais genérico da constraint (ex.: {@code Size}), sem objeto nem campo. */
+    private static String lastCode(String[] codes) {
+        return codes == null || codes.length == 0 ? "invalid" : codes[codes.length - 1];
     }
 
     // ---- funil único: rastreio garantido + log no nível certo --------------------------------------

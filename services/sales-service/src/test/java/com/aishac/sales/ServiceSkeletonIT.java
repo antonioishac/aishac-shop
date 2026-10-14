@@ -5,7 +5,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.aishac.sales.config.CorrelationIdFilter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import java.io.Reader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Locale;
+import java.util.Set;
+import java.util.TreeSet;
 import lombok.extern.slf4j.Slf4j;
+import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.system.CapturedOutput;
@@ -20,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClient;
+import org.yaml.snakeyaml.Yaml;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -101,12 +109,98 @@ class ServiceSkeletonIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void shouldPublishOpenApiContract() {
-        // O cabeçalho X-Correlation-Id em cada operação é verificado quando houver endpoints reais (ver
-        // customer-service).
+    void shouldPublishOperationsAndSchemasAsDeclaredInTheContract() throws Exception {
+        // Given
+        JsonNode contract = contract();
         JsonNode docs = json(get("/v3/api-docs", null));
+        SoftAssertions softly = new SoftAssertions();
+        softly.assertThat(docs.path("info").path("title").asString()).isEqualTo("Sales Service API");
 
-        assertThat(docs.path("info").path("title").asString()).isEqualTo("Sales Service API");
+        // Then: cada operação do contrato existe, com o mesmo operationId, os mesmos códigos de resposta e o
+        // cabeçalho de correlação; os erros em application/problem+json
+        contract.path("paths")
+                .properties()
+                .forEach(path -> path.getValue().properties().forEach(method -> {
+                    if (method.getKey().equals("parameters")) {
+                        return;
+                    }
+                    String where = method.getKey().toUpperCase(Locale.ROOT) + " " + path.getKey();
+                    JsonNode generated = docs.path("paths").path(path.getKey()).path(method.getKey());
+                    softly.assertThat(generated.path("operationId").asString())
+                            .as(where + " operationId")
+                            .isEqualTo(method.getValue().path("operationId").asString());
+                    softly.assertThat(names(generated.path("responses")))
+                            .as(where + " responses")
+                            .isEqualTo(names(method.getValue().path("responses")));
+                    softly.assertThat(generated.path("parameters").toString())
+                            .as(where + " correlation header")
+                            .contains(CorrelationIdFilter.HEADER);
+                    generated.path("responses").properties().stream()
+                            .filter(response -> response.getKey().startsWith("4")
+                                    || response.getKey().startsWith("5"))
+                            .forEach(response -> softly.assertThat(
+                                            response.getValue().path("content").has("application/problem+json"))
+                                    .as(where + " " + response.getKey() + " problem+json")
+                                    .isTrue());
+                }));
+
+        // Then: cada schema do contrato existe, com os mesmos obrigatórios, enums, $ref e campos anuláveis
+        JsonNode generatedSchemas = docs.path("components").path("schemas");
+        contract.path("components").path("schemas").properties().forEach(schema -> {
+            String name = schema.getKey();
+            JsonNode expected = schema.getValue();
+            JsonNode generated = generatedSchemas.path(name);
+            softly.assertThat(generated.isMissingNode()).as(name + " exists").isFalse();
+            softly.assertThat(values(generated.path("required")))
+                    .as(name + " required")
+                    .isEqualTo(values(expected.path("required")));
+            softly.assertThat(values(generated.path("enum")))
+                    .as(name + " enum")
+                    .isEqualTo(values(expected.path("enum")));
+            expected.path("properties").properties().forEach(property -> {
+                String where = name + "." + property.getKey();
+                JsonNode generatedProperty = generated.path("properties").path(property.getKey());
+                softly.assertThat(generatedProperty.isMissingNode())
+                        .as(where + " exists")
+                        .isFalse();
+                property.getValue()
+                        .findValues("$ref")
+                        .forEach(ref -> softly.assertThat(generatedProperty.toString())
+                                .as(where + " $ref")
+                                .contains(ref.asString()));
+                if (property.getValue().path("type").toString().contains("\"null\"")
+                        || property.getValue().path("oneOf").toString().contains("\"null\"")) {
+                    softly.assertThat(generatedProperty.toString())
+                            .as(where + " nullable")
+                            .contains("\"null\"");
+                }
+            });
+        });
+        softly.assertThat(docs.at("/paths/~1api~1v1~1products~1{productId}~1images/get/responses/200/content"
+                                + "/application~1json/schema/maxItems")
+                        .asInt())
+                .as("listProductImages maxItems")
+                .isEqualTo(8);
+        softly.assertAll();
+    }
+
+    /** O contrato aprovado da spec (fonte da verdade da API), convertido para a mesma árvore JSON do springdoc. */
+    private static JsonNode contract() throws Exception {
+        Path file = Path.of("../../specs/sales/F01-030-catalog/contract.yaml");
+        try (Reader reader = Files.newBufferedReader(file)) {
+            Object yaml = new Yaml().load(reader);
+            return JSON.valueToTree(yaml);
+        }
+    }
+
+    private static Set<String> names(JsonNode node) {
+        return new TreeSet<>(node.propertyNames());
+    }
+
+    private static Set<String> values(JsonNode node) {
+        Set<String> values = new TreeSet<>();
+        node.values().forEach(value -> values.add(value.asString()));
+        return values;
     }
 
     private void assertProblem(ResponseEntity<String> response, int status, String code) {

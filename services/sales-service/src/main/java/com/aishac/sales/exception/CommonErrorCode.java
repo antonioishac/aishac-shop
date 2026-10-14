@@ -6,11 +6,13 @@ import org.springframework.http.HttpStatus;
 public enum CommonErrorCode implements ErrorCode {
     VALIDATION_ERROR("Request has invalid fields.", HttpStatus.BAD_REQUEST),
     MALFORMED_REQUEST("Request body is malformed.", HttpStatus.BAD_REQUEST),
+    FILE_TOO_LARGE("Uploaded file exceeds the maximum request size.", HttpStatus.BAD_REQUEST),
     ROUTE_NOT_FOUND("Route not found.", HttpStatus.NOT_FOUND),
     METHOD_NOT_ALLOWED("HTTP method not supported by this route.", HttpStatus.METHOD_NOT_ALLOWED),
     CONCURRENT_MODIFICATION("Resource was changed by another request. Reload and try again.", HttpStatus.CONFLICT),
     DATA_INTEGRITY_VIOLATION("Request conflicts with existing data.", HttpStatus.CONFLICT),
-    INTERNAL_ERROR("An unexpected error occurred.", HttpStatus.INTERNAL_SERVER_ERROR);
+    INTERNAL_ERROR("An unexpected error occurred.", HttpStatus.INTERNAL_SERVER_ERROR),
+    SERVICE_UNAVAILABLE("A required dependency is unavailable. Try again later.", HttpStatus.SERVICE_UNAVAILABLE);
 
     private final String defaultMessage;
     private final HttpStatus httpStatus;

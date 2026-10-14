@@ -37,7 +37,8 @@ controller ──▶ service ──▶ repository / specification / mapper
 - **Mapper** (MapStruct) converte entidade → resposta e copia campos simples de request → entidade. Lógica condicional fica no service.
 
 ## Entre módulos do sales-service (ADR-026)
-- Cada módulo é um pacote com as camadas dentro: `com.aishac.sales.<modulo>.{controller,dto,entity,exception,mapper,repository,service,specification}`. Só `config/` e `exception/` transversais ficam na raiz.
+- Cada módulo é um pacote com as camadas dentro: `com.aishac.sales.<modulo>.{config,controller,dto,entity,exception,mapper,repository,service,specification}`. Na raiz ficam só os transversais: `config/`, `exception/`, `entity/BaseEntity` e `dto/{PageResponse,ProblemResponse}`.
+- Outros módulos enxergam do catálogo só as interfaces `catalog.service.*Service`, `catalog.dto` e `catalog.exception`.
 - `catalog` não depende de `order` nem de `payment`.
 - Um módulo usa outro **somente pelas interfaces de service** do outro (nunca repository, entity, mapper ou specification alheios), trafegando DTOs ou tipos simples.
 - Sem FK entre tabelas de módulos diferentes.

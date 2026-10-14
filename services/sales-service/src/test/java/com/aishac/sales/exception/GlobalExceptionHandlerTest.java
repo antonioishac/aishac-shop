@@ -58,7 +58,7 @@ class GlobalExceptionHandlerTest {
         mvc.perform(get("/fail/check"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
-                .andExpect(jsonPath("$.errors[0].field").value("ck_orders_total"));
+                .andExpect(jsonPath("$.errors[0].field").value("request"));
         mvc.perform(get("/fail/unique"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("DATA_INTEGRITY_VIOLATION"));

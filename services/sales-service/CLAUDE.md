@@ -8,8 +8,10 @@ Dono dos contextos **Catálogo**, **Pedido** e **Pagamento**. Banco `aishac_sale
 com.aishac.sales/
 ├── config/      # transversal: Clock, auditoria JPA, OpenAPI, correlação (entrada e RestClient de saída), máscara de logs
 ├── exception/   # transversal: ErrorCode, CommonErrorCode, GlobalExceptionHandler
+├── entity/      # transversal: BaseEntity (UUID v7 + auditoria)
+├── dto/         # transversal: PageResponse, ProblemResponse (documentação OpenAPI)
 ├── catalog/     # categorias, produtos, estoque, imagens (F01-030)
-│   └── controller · dto · entity · exception · mapper · repository · service/impl · specification
+│   └── config · controller · dto · entity · exception · mapper · repository · service/impl · specification
 ├── order/       # pedido, itens, máquina de estados (F01-040) — mesma estrutura
 └── payment/     # pagamento simulado, Strategy (F01-046) — mesma estrutura
 ```
@@ -17,7 +19,7 @@ com.aishac.sales/
 ## Fronteiras entre módulos
 
 - `catalog` não conhece `order` nem `payment`.
-- `order` usa o catálogo **só pelas interfaces de service** do catálogo (nunca repository, entity ou mapper dele); sem FK entre tabelas de módulos (o catálogo poderá ser extraído, IF-010). O ArchUnit verifica.
+- `order` usa o catálogo **só pelas interfaces `*Service`** do catálogo, com os DTOs e códigos de erro dele (nunca repository, entity, mapper, storage ou helpers); sem FK entre tabelas de módulos (o catálogo poderá ser extraído, IF-010). O ArchUnit verifica.
 
 ## Transversal
 

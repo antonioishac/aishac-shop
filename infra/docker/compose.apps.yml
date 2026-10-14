@@ -75,6 +75,9 @@ services:
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
       PRODUCT_IMAGES_BUCKET: ${PRODUCT_IMAGES_BUCKET:-aishac-product-images-local}
+      # O serviço fala com o LocalStack pela rede do compose; as URLs pré-assinadas usam localhost (navegador).
+      AWS_S3_ENDPOINT: http://localstack:4566
+      AWS_S3_PUBLIC_ENDPOINT: http://localhost:${LOCALSTACK_PORT:-4566}
     ports:
       - "127.0.0.1:8082:8082"
     depends_on:

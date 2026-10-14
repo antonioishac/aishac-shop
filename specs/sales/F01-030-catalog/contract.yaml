@@ -214,7 +214,7 @@ paths:
       description: |
         Paginado. Filtros combináveis. `sellable=true` traz só produtos ativos de categorias ativas (vitrine).
         Ordenação por `name`, `price` ou `createdAt`; padrão `createdAt,desc`.
-        Com o S3 indisponível, a listagem funciona e `primaryImage` vem nulo.
+        Se a URL pré-assinada não puder ser gerada, a listagem funciona e `primaryImage` vem nulo.
       parameters:
         - $ref: "#/components/parameters/CorrelationId"
         - name: categoryId
@@ -271,7 +271,7 @@ paths:
       tags: [Products]
       operationId: getProduct
       summary: Buscar produto por id
-      description: Qualquer situação. Inclui a imagem principal com URL pré-assinada (nula se o S3 falhar).
+      description: Qualquer situação. Inclui a imagem principal com URL pré-assinada (nula se a URL não puder ser gerada).
       responses:
         "200":
           description: Produto
@@ -752,7 +752,7 @@ components:
           type: boolean
           description: Produto e categoria ativos
         primaryImage:
-          description: Nulo se não houver imagem ou se o S3 estiver indisponível
+          description: Nulo se não houver imagem ou se a URL pré-assinada não puder ser gerada
           oneOf:
             - $ref: "#/components/schemas/ProductImageResponse"
             - type: "null"
@@ -942,7 +942,7 @@ components:
 
   responses:
     BadRequest:
-      description: "VALIDATION_ERROR, INVALID_IMAGE_TYPE, IMAGE_TOO_LARGE ou MALFORMED_REQUEST"
+      description: "VALIDATION_ERROR, INVALID_IMAGE_TYPE, IMAGE_TOO_LARGE, FILE_TOO_LARGE ou MALFORMED_REQUEST"
       content:
         application/problem+json:
           schema:
@@ -998,7 +998,7 @@ components:
                 correlationId: 3f1c2a9e-0b7d-4c55-9a1e-2d3f4b5c6d7e
                 timestamp: "2026-10-13T15:00:00Z"
     StorageUnavailable:
-      description: "IMAGE_STORAGE_UNAVAILABLE (S3 fora do ar, circuito aberto ou timeout)"
+      description: "IMAGE_STORAGE_UNAVAILABLE (S3 fora do ar, circuito aberto, timeout ou falha ao gerar a URL pré-assinada)"
       content:
         application/problem+json:
           schema:

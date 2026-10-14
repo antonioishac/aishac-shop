@@ -16,3 +16,122 @@ X-Correlation-Id: {{correlationId}}
 
 ### Rota inexistente: 404 em ProblemDetail com code, correlationId e timestamp
 GET {{salesService}}/api/v1/does-not-exist
+
+# =====================================================================
+# Catálogo (spec F01-030). Execute em ordem: os ids ficam em variáveis.
+# O perfil local já traz 4 categorias e 20 produtos de exemplo (seed).
+# =====================================================================
+
+### Cadastrar categoria
+POST {{salesService}}/api/v1/categories
+Content-Type: application/json
+X-Correlation-Id: {{correlationId}}
+
+{ "name": "Acessórios", "description": "Bonés, meias e mochilas" }
+
+> {% client.global.set("categoryId", response.body.id); client.global.set("categoryVersion", response.body.version); %}
+
+### Listar categorias ativas (ordem padrão: nome)
+GET {{salesService}}/api/v1/categories?active=true&page=0&size=20
+
+### Atualizar categoria (exige a version lida; repetir dá 409 CONCURRENT_MODIFICATION)
+PUT {{salesService}}/api/v1/categories/{{categoryId}}
+Content-Type: application/json
+
+{ "name": "Acessórios esportivos", "description": null, "version": {{categoryVersion}} }
+
+### Cadastrar produto (SKU vira maiúsculo; estoque inicial entra no histórico)
+POST {{salesService}}/api/v1/products
+Content-Type: application/json
+
+{
+  "sku": "bone-run-01",
+  "name": "Boné Run",
+  "description": "Boné leve para corrida",
+  "price": "79.90",
+  "categoryId": "{{categoryId}}",
+  "initialStock": 10
+}
+
+> {% client.global.set("productId", response.body.id); client.global.set("productVersion", response.body.version); %}
+
+### Buscar produto (com a imagem principal, se houver)
+GET {{salesService}}/api/v1/products/{{productId}}
+
+### Vitrine: vendáveis, filtro por nome e faixa de preço, ordenados por preço
+GET {{salesService}}/api/v1/products?sellable=true&name=run&minPrice=50.00&maxPrice=300.00&sort=price,asc
+
+### Atualizar produto (SKU e estoque não mudam)
+PUT {{salesService}}/api/v1/products/{{productId}}
+Content-Type: application/json
+
+{
+  "name": "Boné Run Pro",
+  "description": null,
+  "price": "89.90",
+  "categoryId": "{{categoryId}}",
+  "version": {{productVersion}}
+}
+
+### Desativar / reativar produto
+POST {{salesService}}/api/v1/products/{{productId}}/deactivate
+
+###
+POST {{salesService}}/api/v1/products/{{productId}}/activate
+
+### Entrada de estoque
+POST {{salesService}}/api/v1/products/{{productId}}/stock-movements
+Content-Type: application/json
+
+{ "type": "ENTRY", "quantity": 5, "reason": "Reposição do fornecedor" }
+
+### Saída maior que o estoque: 422 INSUFFICIENT_STOCK
+POST {{salesService}}/api/v1/products/{{productId}}/stock-movements
+Content-Type: application/json
+
+{ "type": "EXIT", "quantity": 999, "reason": "Teste de estoque insuficiente" }
+
+### Histórico de estoque (mais recente primeiro)
+GET {{salesService}}/api/v1/products/{{productId}}/stock-movements
+
+# ---- Imagens (exigem o LocalStack no ar; a URL pré-assinada abre no navegador) ----
+
+### Enviar imagem (a primeira vira principal). Troque o caminho por uma imagem sua.
+POST {{salesService}}/api/v1/products/{{productId}}/images
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="bone.jpg"
+Content-Type: image/jpeg
+
+< ./images/bone.jpg
+--boundary
+Content-Disposition: form-data; name="altText"
+
+Boné Run azul, vista frontal
+--boundary--
+
+> {% client.global.set("imageId", response.body.id); %}
+
+### Listar imagens (pela posição, com URL pré-assinada)
+GET {{salesService}}/api/v1/products/{{productId}}/images
+
+### Atualizar metadados (texto alternativo, posição e/ou principal)
+PATCH {{salesService}}/api/v1/products/{{productId}}/images/{{imageId}}
+Content-Type: application/json
+
+{ "altText": "Boné Run azul, vista lateral", "position": 1, "primary": true }
+
+### Substituir o arquivo (chave nova; o objeto antigo é removido)
+PUT {{salesService}}/api/v1/products/{{productId}}/images/{{imageId}}/file
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="bone-2.png"
+Content-Type: image/png
+
+< ./images/bone-2.png
+--boundary--
+
+### Excluir imagem (banco primeiro, depois o S3)
+DELETE {{salesService}}/api/v1/products/{{productId}}/images/{{imageId}}

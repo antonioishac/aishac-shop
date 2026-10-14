@@ -9,4 +9,5 @@ Formato do **HTTP Client do IntelliJ** (também lido pelo plugin httpYac no VS C
 | `sales-service.http` | sales-service (8082) |
 
 - Toda feature que cria ou muda endpoint atualiza o arquivo do serviço (Definition of Done).
+- Upload de imagens (`sales-service.http`): coloque os seus arquivos em `http/images/` (`bone.jpg`, `bone-2.png`) antes de executar; a pasta não é versionada.
 - Nada de segredos aqui: valores sensíveis vão em `http-client.private.env.json`, que está no `.gitignore`.

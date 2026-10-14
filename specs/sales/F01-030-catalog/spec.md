@@ -48,7 +48,7 @@ Manter o catálogo do Aishac Shop: categorias, produtos com preço e estoque, e 
 | RN-19 | **Substituir** o arquivo grava um objeto com **chave nova**, atualiza o banco e só então remove o objeto antigo. A imagem mantém id, texto alternativo, posição e marcação de principal. |
 | RN-20 | **Excluir** remove o registro do banco e depois o objeto do S3. Se a exclusão no S3 falhar, a imagem continua excluída para a API e o objeto órfão é removido depois pela regra de ciclo de vida do bucket. Ao excluir a principal, a próxima pela posição vira principal. |
 | RN-21 | Se o banco falhar depois do upload, o objeto recém-enviado é removido (compensação): nunca fica arquivo sem registro por erro da API. |
-| RN-22 | Se o S3 estiver indisponível, upload, substituição e leitura de URLs respondem "armazenamento indisponível" (503), sem alterar o banco (Resilience4j, ADR-009). |
+| RN-22 | Se o S3 estiver indisponível, upload e substituição respondem "armazenamento indisponível" (503), sem alterar o banco (Circuit Breaker do Resilience4j, ADR-009). A URL pré-assinada é calculada localmente, sem chamar o S3: só falha por erro de configuração ou de credenciais, e então a leitura de imagens também responde 503. |
 
 ## 3. Critérios de aceite
 
@@ -214,11 +214,11 @@ Contrato completo: [contract.yaml](contract.yaml)
 | `IMAGE_LIMIT_EXCEEDED` | 422 | 9ª imagem do produto |
 | `IMAGE_STORAGE_UNAVAILABLE` | 503 | S3 indisponível (circuito aberto, timeout ou erro) |
 
-Todos em ProblemDetail com `code`, `correlationId` e `timestamp` (ADR-008). Valem também os códigos transversais do serviço (`MALFORMED_REQUEST`, `ROUTE_NOT_FOUND`, `METHOD_NOT_ALLOWED`, `DATA_INTEGRITY_VIOLATION`, `INTERNAL_ERROR`).
+Todos em ProblemDetail com `code`, `correlationId` e `timestamp` (ADR-008). Valem também os códigos transversais do serviço (`MALFORMED_REQUEST`, `FILE_TOO_LARGE` — corpo multipart acima do limite do servidor, 10 MB —, `ROUTE_NOT_FOUND`, `METHOD_NOT_ALLOWED`, `DATA_INTEGRITY_VIOLATION`, `INTERNAL_ERROR`).
 
 ## 6. Modelo de dados
 
-> **Status:** proposto, aguardando o Portão 2. Banco `aishac_sales` (PostgreSQL 18), dono `sales_app`. Migrations: F01-031.
+> **Status:** aprovado em 2026-10-13 (Portão 2); DDL validado em PostgreSQL 18.4. Banco `aishac_sales` (PostgreSQL 18), dono `sales_app`. Migrations: F01-031.
 
 ### Visão geral
 
@@ -401,7 +401,7 @@ CREATE TABLE product_images (
 Separação prevista nas migrations (F01-031): `V1__create_categories.sql` (com a extensão), `V2__create_products.sql`, `V3__create_stock_movements.sql`, `V4__create_product_images.sql` e o seed em `db/seed/`.
 
 ## 7. Dependências externas
-- **Amazon S3** (LocalStack no perfil `local` e nos testes; AWS no `dev`): **obrigatório** para enviar, substituir e ler imagens; indisponível → `503 IMAGE_STORAGE_UNAVAILABLE`. Listagem e consulta de produtos **não dependem** do S3: com o S3 fora do ar, o produto vem com `primaryImage` = `null` (pergunta 6).
+- **Amazon S3** (LocalStack no perfil `local` e nos testes; AWS no `dev`): **obrigatório** para enviar e substituir imagens; indisponível → `503 IMAGE_STORAGE_UNAVAILABLE`. A URL pré-assinada é calculada sem chamar o S3, então a leitura continua respondendo com o S3 fora do ar (o link só funciona quando ele voltar). Listagem e consulta de produtos **não dependem** do S3: se a URL não puder ser gerada, o produto vem com `primaryImage` = `null` (pergunta 6).
 - Configuração nova por perfil: bucket, região, endpoint (LocalStack), validade da URL pré-assinada, tamanho máximo de imagem (skill `configurar-ambiente`).
 - Infra do `dev`: script AWS CLI do bucket privado com ciclo de vida de 30 dias e política IAM (F01-037, executado por você).
 - Nenhuma chamada a outros serviços. O módulo `order` (F01-040) vai ler preço, vendabilidade e baixar estoque pelo próprio sales-service, em processo.
